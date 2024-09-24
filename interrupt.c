@@ -9,17 +9,22 @@
 
 #include <zeos_interrupt.h>
 
+#define EOI asm volatile("movb $0x20, %al; outb %al, $0x20")
+
+extern void keyboard_handler();
+
+
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
 char char_map[] =
 {
   '\0','\0','1','2','3','4','5','6',
-  '7','8','9','0','\'','¡','\0','\0',
+  '7','8','9','0','\'','ï¿½','\0','\0',
   'q','w','e','r','t','y','u','i',
   'o','p','`','+','\0','\0','a','s',
-  'd','f','g','h','j','k','l','ñ',
-  '\0','º','\0','ç','z','x','c','v',
+  'd','f','g','h','j','k','l','ï¿½',
+  '\0','ï¿½','\0','ï¿½','z','x','c','v',
   'b','n','m',',','.','-','\0','*',
   '\0','\0','\0','\0','\0','\0','\0','\0',
   '\0','\0','\0','\0','\0','\0','\0','7',
@@ -74,6 +79,13 @@ void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
 }
 
 
+void enable_keyboard_interrupt() {
+    // Puerto del PIC maestro es 0x21, habilitar IRQ1 (teclado)
+    unsigned char mask = inb(0x21);
+    mask &= ~(1 << 1); // Limpia el bit 1 para habilitar IRQ1
+    outb(mask, 0x21);
+}
+
 void setIdt()
 {
   /* Program interrups/exception service routines */
@@ -83,7 +95,31 @@ void setIdt()
   set_handlers();
 
   /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
+  enable_keyboard_interrupt();
 
   set_idt_reg(&idtR);
 }
+
+void set_handlers() {
+    // Inicializar todas las interrupciones aqui
+    
+    setInterruptHandler(33, keyboard_handler, 0);
+}
+
+
+void keyboard_isr() {
+    // Leer el cÃ³digo de la tecla del puerto 0x60 (puerto del teclado)
+    unsigned char scancode = inb(0x60);
+
+    // Si el bit mÃ¡s significativo no estÃ¡ en 1, significa que es una tecla presionada (no liberada)
+    if (!(scancode & 0x80)) {
+        char key = char_map[scancode];
+        // Imprimir la tecla presionada o procesarla
+        printk(key); // funciÃ³n hipotÃ©tica para mostrar el carÃ¡cter en pantalla
+    }
+
+    // Enviar End Of Interrupt (EOI) al PIC
+    EOI;
+}
+
 

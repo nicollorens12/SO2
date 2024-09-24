@@ -52,18 +52,21 @@
       movl %edx, %es
 
 #define RESTORE_ALL \
+      popl %gs; \
+      popl %fs; \
+      popl %es; \
+      popl %ds; \
+      popl %eax; \
+      popl %ebp; \
+      popl %edi; \
+      popl %esi; \
+      popl %ebx; \
+      popl %ecx; \
       popl %edx;
-      popl %edx;
-      popl %ecx;
-      popl %ebx;
-      popl %esi;
-      popl %edi;
-      popl %ebp;
-      popl %eax;
-      popl %ds;
-      popl %es;
-      popl %fs;
-      popl %gs;
+
+
+
+
 
 
 
