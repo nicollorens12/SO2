@@ -75,6 +75,7 @@ int __attribute__((__section__(".text.main")))
   printc_color('r', 0x04);
   printc_color('g', 0x02);
   printc_color('b', 0x01);
+  printc('\n');
   printk("Kernel Loaded!    ");
 
 
