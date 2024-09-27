@@ -71,7 +71,11 @@ int __attribute__((__section__(".text.main")))
   set_seg_regs(__KERNEL_DS, __KERNEL_DS, (DWord) &task[4]);
 
   /*** DO *NOT* ADD ANY CODE IN THIS ROUTINE BEFORE THIS POINT ***/
-
+  printk("## WELCOME TO ZEOS - SO2 ##\n");
+  printc_color('r', 0x04);
+  printc_color('g', 0x02);
+  printc_color('b', 0x01);
+  printc('\n');
   printk("Kernel Loaded!    ");
 
 

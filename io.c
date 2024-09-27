@@ -45,6 +45,27 @@ void printc(char c)
   }
 }
 
+void printc_color(char c, char color)
+{
+     __asm__ __volatile__ ( "movb %0, %%al; outb $0xe9" ::"a"(c)); /* Magic BOCHS debug: writes 'c' to port 0xe9 */
+  if (c=='\n')
+  {
+    x = 0;
+    y=(y+1)%NUM_ROWS;
+  }
+  else
+  {
+    Word ch = (Word) (c & 0x00FF) | (color << 8 & 0x0F00); // Aplicar desplazamiento para que parte baja de `color` coincida y aplicar la mascara
+  Word *screen = (Word *)0xb8000;
+  screen[(y * NUM_COLUMNS + x)] = ch;
+    if (++x >= NUM_COLUMNS)
+    {
+      x = 0;
+      y=(y+1)%NUM_ROWS;
+    }
+  }
+}
+
 void printc_xy(Byte mx, Byte my, char c)
 {
   Byte cx, cy;
