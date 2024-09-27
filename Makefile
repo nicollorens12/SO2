@@ -18,8 +18,8 @@ OBJCOPY = objcopy -O binary -R .note -R .comment -S
 INCLUDEDIR = include
 
 
-#CFLAGS = -m32 -O2  -g -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR) -fno-PIC
-CFLAGS = -m32 -O0  -g -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR) -fno-PIC
+CFLAGS = -m32 -O2  -g -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR) -fno-PIC
+#CFLAGS = -m32 -O0  -g -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR) -fno-PIC
 
 ASMFLAGS = -I$(INCLUDEDIR)
 LDFLAGS = -g -melf_i386
@@ -36,7 +36,7 @@ SYSOBJ = \
 	utils.o \
 	hardware.o \
 	list.o \
-	wrapper.o \
+	wrappers.o \
 
 LIBZEOS = -L . -l zeos
 
@@ -70,11 +70,8 @@ entry.s: entry.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 suma.s: suma.S $(INCLUDEDIR)/asm.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
-wrappers: wrappers.o
-	$(LD86) -s -o $@ $<
-
-wrappers.o: wrappers.s entry.o $(INCLUDEDIR)/asm.h
-	$(AS86) -o $@ $<
+wrappers.o: wrappers.s
+	$(AS) -o $@ $<
 
 wrappers.s: wrappers.S $(INCLUDEDIR)/asm.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
@@ -84,7 +81,7 @@ sys_call_table.s: sys_call_table.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 
 user.o:user.c $(INCLUDEDIR)/libc.h
 
-interrupt.o: interrupt.c $(INCLUDEDIR)/interrupt.h $(INCLUDEDIR)/segment.h $(INCLUDEDIR)/types.h wrappers
+interrupt.o: interrupt.c $(INCLUDEDIR)/interrupt.h $(INCLUDEDIR)/segment.h $(INCLUDEDIR)/types.h
 
 io.o:io.c $(INCLUDEDIR)/io.h
 

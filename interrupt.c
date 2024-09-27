@@ -79,12 +79,6 @@ void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
 }
 
 
-void enable_keyboard_interrupt() {
-    // Puerto del PIC maestro es 0x21, habilitar IRQ1 (teclado)
-    unsigned char mask = inb(0x21);
-    mask &= ~(1 << 1); // Limpia el bit 1 para habilitar IRQ1
-    outb(mask, 0x21);
-}
 
 void setIdt()
 {
@@ -94,8 +88,7 @@ void setIdt()
   
   set_handlers();
 
-  /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
-  enable_keyboard_interrupt();
+
 
   set_idt_reg(&idtR);
 }
@@ -110,15 +103,12 @@ void set_handlers() {
 void keyboard_isr() {
     // Leer el código de la tecla del puerto 0x60 (puerto del teclado)
     unsigned char scancode = inb(0x60);
-
     // Si el bit más significativo no está en 1, significa que es una tecla presionada (no liberada)
     if (!(scancode & 0x80)) {
         char key = char_map[scancode];
-        // Imprimir la tecla presionada o procesarla
-        printk(key); // función hipotética para mostrar el carácter en pantalla
+        printc(key);
     }
 
-    // Enviar End Of Interrupt (EOI) al PIC
     EOI;
 }
 
