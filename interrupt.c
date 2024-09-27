@@ -87,17 +87,13 @@ void setIdt()
   idtR.limit = IDT_ENTRIES * sizeof(Gate) - 1;
   
   set_handlers();
+  setInterruptHandler(33, keyboard_handler, 0);
 
 
 
   set_idt_reg(&idtR);
 }
 
-void set_handlers() {
-    // Inicializar todas las interrupciones aqui
-    
-    setInterruptHandler(33, keyboard_handler, 0);
-}
 
 
 void keyboard_isr() {
