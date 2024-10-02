@@ -86,9 +86,7 @@ void setIdt()
   idtR.limit = IDT_ENTRIES * sizeof(Gate) - 1;
   
   set_handlers();
-  //setInterruptHandler(33, keyboard_handler, 0); // Lo hace automatico al montar la tabla en entry.S
-
-
+  setInterruptHandler(33, keyboard_handler, 0);
 
   set_idt_reg(&idtR);
 }
