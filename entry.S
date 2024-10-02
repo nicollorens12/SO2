@@ -64,4 +64,13 @@
       popl %fs; \
       popl %gs; \
 
-/** EOI: End of interrupt is implemented **/
+#define EOI \
+      movb $0x20, %al ; \
+      outb %al, $0x20 ;
+
+ENTRY(keyboard_handler)
+    SAVE_ALL            
+    call keyboard_routine   
+    EOI                       /** Lo quito de interrupt para seguir lo que dijo A.Pajuelo --> Preguntar en lab **/
+    RESTORE_ALL         
+    iret    

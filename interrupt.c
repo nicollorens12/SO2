@@ -9,13 +9,12 @@
 
 #include <zeos_interrupt.h>
 
-#define EOI asm volatile("movb $0x20, %al; outb %al, $0x20")
-
-extern void keyboard_handler();
-
+//#define EOI asm volatile("movb $0x20, %al; outb %al, $0x20")
 
 Gate idt[IDT_ENTRIES];
 Register    idtR;
+
+void keyboard_handler();
 
 char char_map[] =
 {
@@ -87,7 +86,7 @@ void setIdt()
   idtR.limit = IDT_ENTRIES * sizeof(Gate) - 1;
   
   set_handlers();
-  setInterruptHandler(33, keyboard_handler, 0);
+  //setInterruptHandler(33, keyboard_handler, 0); // Lo hace automatico al montar la tabla en entry.S
 
 
 
@@ -96,7 +95,7 @@ void setIdt()
 
 
 
-void keyboard_isr() {
+void keyboard_routine() {
     // Leer el código de la tecla del puerto 0x60 (puerto del teclado)
     unsigned char scancode = inb(0x60);
     // Si el bit más significativo no está en 1, significa que es una tecla presionada (no liberada)
@@ -105,7 +104,7 @@ void keyboard_isr() {
         printc(key);
     }
 
-    EOI;
+    //EOI;
 }
 
 
