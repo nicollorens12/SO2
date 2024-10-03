@@ -49,6 +49,7 @@ void perror(void)
   /* 
   NO ME ESTA DEJANDO IMPORTAR #include <string.h>
   DE MOMENTO LO PONGO 'FEO'
+  > Supongo que habria que implementarlo a mano
 
   // Como es un array --> En C se usar strcpy para assignar strings
   //                      char* strcpy(char* destination, const char* source);

@@ -15,6 +15,7 @@ Gate idt[IDT_ENTRIES];
 Register    idtR;
 
 void keyboard_handler();
+void system_call_handler();
 
 char char_map[] =
 {
@@ -87,6 +88,7 @@ void setIdt()
   
   set_handlers();
   setInterruptHandler(33, keyboard_handler, 0);
+  setTrapHandler(0x80, system_call_handler, 3);
 
   set_idt_reg(&idtR);
 }

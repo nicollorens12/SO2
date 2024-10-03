@@ -19,6 +19,9 @@ int __attribute__ ((__section__(".text.main")))
 	int s = add(0x42, 0x666);
 
 	int s_ass = addAsm(0x42, 0x666);
+
+	char buff[] = "Josejuan esta imprmiendo";
+	write(1, buff, strlen(buff));
     
   while(1) { }
 }

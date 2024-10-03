@@ -17,3 +17,5 @@ ENTRY(write)
 
 	# System call index --> Guardar #servei
 	movl $4, %eax
+
+	int $0x80
