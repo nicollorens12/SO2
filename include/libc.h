@@ -20,4 +20,7 @@ int fork();
 
 void exit();
 
+// Write an error message for the standard output according to the value of the errno variable
+void perror(void);
+
 #endif  /* __LIBC_H__ */

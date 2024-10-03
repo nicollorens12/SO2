@@ -5,6 +5,7 @@
 #include <libc.h>
 
 #include <types.h>
+#include <errno.h>
 
 int errno;
 
@@ -43,3 +44,36 @@ int strlen(char *a)
   return i;
 }
 
+void perror(void) 
+{
+  /* 
+  NO ME ESTA DEJANDO IMPORTAR #include <string.h>
+  DE MOMENTO LO PONGO 'FEO'
+
+  // Como es un array --> En C se usar strcpy para assignar strings
+  //                      char* strcpy(char* destination, const char* source);
+  char msg[256];
+
+  switch(errno) {
+    case ENOSYS:
+      strcpy(msg, "Function not implemented");
+      break;
+    default:
+      strcpy(msg, "Error not described");
+      break;
+  }
+  write(1, msg, strlen(msg));
+  */
+
+  switch(errno) {
+    char* msg;
+    case ENOSYS:
+      msg = "Function not implemented";
+      write(1, msg, strlen(msg));
+      break;
+    default:
+      msg = "Error not described";
+      write(1, msg, strlen(msg));
+      break;
+  }
+}
