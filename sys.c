@@ -82,7 +82,7 @@ int sys_write(int fd, char * buffer, int size){
 		// Device routine --> write on console
 		bytes_written = sys_write_console(buffer_content, BUFFER_SIZE);
 		
-		buffer = buffer+BUFFER_SIZE;
+		buffer = buffer+BUFFER_SIZE; //potser cal sumar bytes_written?
 		bytes -= bytes_written;
 	}
 

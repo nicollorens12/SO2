@@ -3,7 +3,8 @@
 ENTRY(write)
 	## SAVE THE CONTEXT
 	pushl %ebp
-	movl %ebp, %esp
+	#movl %ebp, %esp
+	movl %esp, %ebp
 
 	# Save register values
 	pushl %edx
@@ -19,3 +20,17 @@ ENTRY(write)
 	movl $4, %eax
 
 	int $0x80
+
+	cmpl $0, %EAX
+    jg ok
+err:
+	movl %eax, errno
+	movl $-1, %eax
+ok:
+	popl %ebx
+	popl %ecx
+	popl %edx
+
+	popl %ebp
+
+	ret

@@ -69,9 +69,9 @@
       outb %al, $0x20 ;
 
 ENTRY(keyboard_handler)
-    SAVE_ALL            
-    call keyboard_routine   
-    EOI                       /** Lo quito de interrupt para seguir lo que dijo A.Pajuelo --> Preguntar en lab **/
+    SAVE_ALL 
+    EOI           
+    call keyboard_routine
     RESTORE_ALL         
     iret    
 
