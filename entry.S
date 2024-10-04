@@ -75,6 +75,13 @@ ENTRY(keyboard_handler)
     RESTORE_ALL         
     iret    
 
+ENTRY(clock_handler)
+      SAVE_ALL
+      EOI
+      call clock_routine
+      RESTORE_ALL
+      iret
+
 ENTRY(system_call_handler)
       SAVE_ALL
       cmpl $0, %EAX
