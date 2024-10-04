@@ -3,6 +3,7 @@
 char buff[24];
 
 int pid;
+int zeos_ticks;
 
 int add(int par1, int par2) {
 	return par1 + par2;
@@ -22,6 +23,11 @@ int __attribute__ ((__section__(".text.main")))
 
 	char buff[] = "Josejuan esta imprmiendo";
 	write(1, buff, strlen(buff));
+
+	int time = gettime();
+	char timeString[] = "";
+	sprintf(timeString, "%d", time);
+	write(1,timeString, strlen(timeString));
     
   while(1) { }
 }
