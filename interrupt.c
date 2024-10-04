@@ -14,7 +14,10 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
+int zeos_ticks = 0;
+
 void keyboard_handler();
+void clock_handler();
 void system_call_handler();
 
 char char_map[] =
@@ -88,6 +91,7 @@ void setIdt()
   
   set_handlers();
   setInterruptHandler(33, keyboard_handler, 0);
+  setInterruptHandler(32, clock_handler, 0);
   setTrapHandler(0x80, system_call_handler, 3);
 
   set_idt_reg(&idtR);
@@ -104,7 +108,11 @@ void keyboard_routine() {
         printc(key);
     }
 
-    //EOI;
 }
 
+
+void clock_routine(){
+  //zeos_ticks++;
+  zeos_show_clock();
+}
 

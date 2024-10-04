@@ -13,6 +13,10 @@
 
 #include <sched.h>
 
+#include <errno.h>
+
+extern int zeos_ticks;
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
@@ -66,10 +70,10 @@ int sys_write(int fd, char * buffer, int size){
 	if(id_error < 0) return id_error;
 
 	// Check buffer 
-	if(buffer == NULL) return -1; // TODO - No se que devolver
+	if(buffer == NULL) return -EFAULT; // TODO - No se que devolver
 
 	// Check size
-	if(size < 0) return -2; // TODO - No se que devolver
+	if(size < 0) return -EINVAL; // TODO - No se que devolver
 
 
 	
