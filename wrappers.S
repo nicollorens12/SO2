@@ -1,9 +1,9 @@
 #include <asm.h>
 
 ENTRY(write)
-	## SAVE THE CONTEXT
+	# SAVE THE CONTEXT
 	pushl %ebp
-	#movl %ebp, %esp
+	# movl %ebp, %esp
 	movl %esp, %ebp
 
 	# Save register values
@@ -27,6 +27,31 @@ err:
 	movl %eax, errno
 	movl $-1, %eax
 ok:
+	popl %ebx
+	popl %ecx
+	popl %edx
+
+	popl %ebp
+
+	ret
+
+ENTRY(gettime)
+	pushl %ebp
+	movl %esp, %ebp
+
+	pushl %edx
+	pushl %ecx
+	pushl %ebx
+
+	movl  8(%ebp), %edx		
+	movl 12(%ebp), %ecx
+	movl 16(%ebp), %ebx
+
+	# System call index --> Guardar #servei
+	movl $10, %eax
+
+	int $0x80
+
 	popl %ebx
 	popl %ecx
 	popl %edx

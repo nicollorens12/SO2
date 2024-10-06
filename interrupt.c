@@ -14,7 +14,7 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
-int zeos_ticks = 0;
+extern int zeos_ticks;
 
 void keyboard_handler();
 void clock_handler();
@@ -92,6 +92,7 @@ void setIdt()
   set_handlers();
   setInterruptHandler(33, keyboard_handler, 0);
   setInterruptHandler(32, clock_handler, 0);
+  
   setTrapHandler(0x80, system_call_handler, 3);
 
   set_idt_reg(&idtR);
