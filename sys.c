@@ -98,3 +98,7 @@ int sys_write(int fd, char * buffer, int size){
 
 	return size - bytes;
 }
+
+sys_gettime(){
+	return zeos_ticks;
+}
