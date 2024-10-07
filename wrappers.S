@@ -39,22 +39,10 @@ ENTRY(gettime)
 	pushl %ebp
 	movl %esp, %ebp
 
-	pushl %edx
-	pushl %ecx
-	pushl %ebx
-
-	movl  8(%ebp), %edx		
-	movl 12(%ebp), %ecx
-	movl 16(%ebp), %ebx
-
 	# System call index --> Guardar #servei
 	movl $10, %eax
 
 	int $0x80
-
-	popl %ebx
-	popl %ecx
-	popl %edx
 
 	popl %ebp
 
