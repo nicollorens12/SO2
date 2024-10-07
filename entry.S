@@ -96,3 +96,12 @@ fin:
       movl %EAX, 0x18(%esp)
       RESTORE_ALL
       iret
+
+ENTRY(new_page_fault_handler)
+    SAVE_ALL
+    EOI 
+    pushl 48(%esp) # # L'error es posa a l'stack de manera auto segons el manual
+    call new_page_fault_routine
+    RESTORE_ALL
+    popl %ECX    # Treure l'error de la pila (CTX HW)
+    iret    

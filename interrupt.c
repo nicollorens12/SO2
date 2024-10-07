@@ -16,6 +16,7 @@ Register    idtR;
 
 extern int zeos_ticks;
 
+void new_page_fault_handler();
 void keyboard_handler();
 void clock_handler();
 void system_call_handler();
@@ -90,6 +91,7 @@ void setIdt()
   idtR.limit = IDT_ENTRIES * sizeof(Gate) - 1;
   
   set_handlers();
+  setInterruptHandler(14, new_page_fault_handler, 3);
   setInterruptHandler(33, keyboard_handler, 0);
   setInterruptHandler(32, clock_handler, 0);
   
@@ -117,3 +119,25 @@ void clock_routine(){
   zeos_show_clock();
 }
 
+void new_page_fault_routine(unsigned int address) {
+  printk("\nProcess generates a PAGE FAULT exception at EIP: 0xXXXXX\n"); // 
+
+  printk("Magico gonz\n");  
+
+  char* buff;
+  itoa(address, buff);
+  printk(buff);
+
+  printk("Magico gonz\n");  
+
+  printk("\n");  
+
+//  char* info;
+//  itoa(error, info);
+//
+//  printk(info);
+//
+//  printk("\n");  
+
+  while(1);
+}
