@@ -100,8 +100,9 @@ fin:
 ENTRY(new_page_fault_handler)
     SAVE_ALL
     EOI 
-    pushl 48(%esp) # # L'error es posa a l'stack de manera auto segons el manual
+    pushl 48(%esp) # Passem parametre (valor de eip --> Adresa erronia)
     call new_page_fault_routine
-    RESTORE_ALL
-    popl %ECX    # Treure l'error de la pila (CTX HW)
+    # No es necesari fer res perque es quedara en un bucle infinit --> Igualment ho posso
+    # POPL del parametre
+    RESTORE_ALL 
     iret    

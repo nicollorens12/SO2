@@ -119,25 +119,49 @@ void clock_routine(){
   zeos_show_clock();
 }
 
-void new_page_fault_routine(unsigned int address) {
-  printk("\nProcess generates a PAGE FAULT exception at EIP: 0xXXXXX\n"); // 
 
-  printk("Magico gonz\n");  
 
-  char* buff;
-  itoa(address, buff);
+// Convert int into hex 0x format string --> MOURE'L A LIBC.H
+void itohex(int a, char *b);
+
+void itohex(int a, char *b)
+{
+  int i, i1, digit;
+  char c;
+  
+  if (a==0) { b[0]='0'; b[1]=0; return ;}
+  
+  i=0;
+  while (a>0)
+  {
+    digit=(a%16);
+    a=a/16;
+
+    if (digit < 10)
+      b[i] = digit + '0';
+    else
+      b[i] = 'A' + digit - 10;
+
+    i++;
+  }
+  
+  for (i1=0; i1<i/2; i1++)
+  {
+    c=b[i1];
+    b[i1]=b[i-i1-1];
+    b[i-i1-1]=c;
+  }
+  b[i]=0;
+}
+
+void new_page_fault_routine(int address) {
+  printk("\nProcess generates a PAGE FAULT exception at EIP: 0x");
+
+  char buff[256];
+  itohex(address, buff);
   printk(buff);
 
-  printk("Magico gonz\n");  
-
-  printk("\n");  
-
-//  char* info;
-//  itoa(error, info);
-//
-//  printk(info);
-//
-//  printk("\n");  
+  printk("\n");
 
   while(1);
 }
