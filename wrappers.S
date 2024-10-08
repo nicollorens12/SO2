@@ -19,18 +19,24 @@ ENTRY(write)
 	# System call index --> Guardar #servei
 	movl $4, %eax
 
-	int $0x80
+	pushl $write_return
+	pushl %ebp
+	mov %esp,%ebp
 
-	cmpl $0, %EAX
-    jg ok
-err:
-	movl %eax, errno
-	movl $-1, %eax
-ok:
-	popl %ebx
-	popl %ecx
+	sysenter
+write_return:
+	popl %ebp
+	
 	popl %edx
+	popl %ecx
 
+	cmpl $0, %eax
+	jge ok_write 
+	# en este caso hay error
+	negl %eax 
+	movl %eax, errno
+	movl -1, %eax
+ok_write:
 	popl %ebp
 
 	ret

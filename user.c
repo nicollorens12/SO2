@@ -33,8 +33,8 @@ int __attribute__ ((__section__(".text.main")))
 	write(1, mesg, strlen(mesg));
 	
     
-	char* p = 0;
-	*p = 'x';
+	//char* p = 0;
+	//*p = 'x';
 
   while(1) { }
 }

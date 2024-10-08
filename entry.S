@@ -105,4 +105,39 @@ ENTRY(new_page_fault_handler)
     # No es necesari fer res perque es quedara en un bucle infinit --> Igualment ho posso
     # POPL del parametre
     RESTORE_ALL 
-    iret    
+    iret
+
+ENTRY(syscall_handler_sysenter)
+      pushl $__USER_DS
+      pushl %ebp 
+      pushfl
+      pushl $__USER_CS
+      pushl 4(%ebp) 
+      SAVE_ALL
+      cmpl $0, %eax
+      jl err_sysenter
+      cmpl $MAX_SYSCALL, %eax
+      jg err_sysenter
+      call *sys_call_table(, %eax, 0x04)
+      jmp ok_sysenter
+err_sysenter:
+      movl $-ENOSYS, %eax
+ok_sysenter:
+      movl %eax, 0x18(%esp)
+      RESTORE_ALL
+      movl (%esp), %edx 
+      movl 12(%esp), %ecx 
+      sti 
+      sysexit    
+
+ENTRY(writeMSR)
+      push %ebp
+      mov %esp, %ebp
+
+      mov 0x8(%ebp), %ecx
+      movl $0, %edx       
+      mov 0xc(%ebp), %eax
+      wrmsr
+
+      pop %ebp
+      ret
