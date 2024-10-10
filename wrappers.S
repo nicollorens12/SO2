@@ -3,13 +3,12 @@
 ENTRY(write)
 	# SAVE THE CONTEXT
 	pushl %ebp
-	# movl %ebp, %esp
 	movl %esp, %ebp
 
 	# Save register values
-	pushl %edx
-	pushl %ecx
-	pushl %ebx
+	#pushl %edx
+	#pushl %ecx
+	#pushl %ebx
 
 	# Move parameters to registers (segons manual EDX, ECX, EBX)
 	movl  8(%ebp), %edx		
@@ -19,6 +18,9 @@ ENTRY(write)
 	# System call index --> Guardar #servei
 	movl $4, %eax
 
+	pushl %ecx
+	pushl %edx
+
 	pushl $write_return
 	pushl %ebp
 	mov %esp,%ebp
@@ -26,7 +28,7 @@ ENTRY(write)
 	sysenter
 write_return:
 	popl %ebp
-	
+	addl $4, %esp
 	popl %edx
 	popl %ecx
 

@@ -20,19 +20,23 @@ int __attribute__ ((__section__(".text.main")))
 
 	int s_ass = addAsm(0x42, 0x666);
 
-	char buff[] = "Josejuan esta imprmiendo";
+
+	// no deuria usar "char *buff" com a string modificable --> TEMPORAL (millor buff[] + strcpy)
+	//char buff[] = "\n\n-- Test write --\n\n";
+
+	// TEST WRITE
+	char *buff = "\n\n-- Test write --\n\n";	
 	write(1, buff, strlen(buff));
 
-	char * mesg = "\n Test gettime()";
-	write(1, mesg, strlen(mesg));
-	itoa(gettime(), mesg); 
-	write(1, mesg, strlen(mesg));
-	mesg = " (gettime result)\n";
-	write(1, mesg, strlen(mesg));
-	mesg = "\n\n";
-	write(1, mesg, strlen(mesg));
+	// TEST GETTIME
+	buff = "--Test gettime(): ";
+	write(1, buff, strlen(buff));
+	itoa(gettime(), buff); 
+	write(1, buff, strlen(buff));
+	buff = "--\n\n";
+	write(1, buff, strlen(buff));
 	
-    
+    // TEST PAGE FAULT
 	//char* p = 0;
 	//*p = 'x';
 
