@@ -24,6 +24,8 @@ int __attribute__ ((__section__(".text.main")))
 	// no deuria usar "char *buff" com a string modificable --> TEMPORAL (millor buff[] + strcpy)
 	//char buff[] = "\n\n-- Test write --\n\n";
 
+		// copy_data() --> Fer string assign amb aquesta funcio
+
 	// TEST WRITE
 	char *buff = "\n\n-- Test write --\n\n";	
 	write(1, buff, strlen(buff));

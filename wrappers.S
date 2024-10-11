@@ -5,10 +5,10 @@ ENTRY(write)
 	pushl %ebp
 	movl %esp, %ebp
 
-	# Save register values
-	#pushl %edx
-	#pushl %ecx
-	#pushl %ebx
+	# Save register values (only if modified and are one of: %ebx, %esi, %edi)
+	pushl %ebx
+	#pushl %esi
+	#pushl %edi	
 
 	# Move parameters to registers (segons manual EDX, ECX, EBX)
 	movl  8(%ebp), %edx		
@@ -39,6 +39,7 @@ write_return:
 	movl %eax, errno
 	movl -1, %eax
 ok_write:
+	popl %ebx
 	popl %ebp
 
 	ret
