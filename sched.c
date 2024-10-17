@@ -57,7 +57,18 @@ void cpu_idle(void)
 
 void init_idle (void)
 {
+	// Obtenir el primer PCB lliure
+	struct list_head* item = list_first(freequeue);
+	// Eliminem entrada de la llista
+	list_del(item);
 
+	// Obtenir punter al task_struct (=== PCB)
+	//struct task_struct* pcb = list_head_to_task_struct(pcb);
+	// Assignar el PID = 0
+	//pcb->PID = 0;
+
+	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
+	//allocate_DIR(pcb);
 }
 
 void init_task1(void)
