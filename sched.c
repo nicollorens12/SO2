@@ -58,12 +58,12 @@ void cpu_idle(void)
 void init_idle (void)
 {
 	// Obtenir el primer PCB lliure
-	struct list_head* item = list_first(freequeue);
+	struct list_head* item = list_first(&freequeue);
 	// Eliminem entrada de la llista
 	list_del(item);
 
 	// Obtenir punter al task_struct (=== PCB)
-	//struct task_struct* pcb = list_head_to_task_struct(pcb);
+	//struct task_struct* pcb = list_head_to_task_struct(item);
 	// Assignar el PID = 0
 	//pcb->PID = 0;
 
@@ -85,7 +85,7 @@ void init_sched()
 	}
 
 	// READY
-	INIT_LIST_HEAD(&freequeue);
+	INIT_LIST_HEAD(&readyqueue);
 }
 
 struct task_struct* current()
@@ -99,3 +99,6 @@ struct task_struct* current()
   return (struct task_struct*)(ret_value&0xfffff000);
 }
 
+void task_switch(union task_union*t){
+	
+}

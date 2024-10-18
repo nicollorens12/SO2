@@ -33,8 +33,8 @@ extern union task_union task[NR_TASKS]; /* Vector de tasques */
 #define INITIAL_ESP       	KERNEL_ESP(&task[1])
 
 
-//extern struct list_head freequeue;
-//struct list_head freequeue;
+extern struct list_head freequeue;
+extern struct list_head readyqueue;
 
 
 /* Inicialitza les dades del proces inicial */
