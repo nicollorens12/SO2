@@ -9,7 +9,7 @@
 union task_union task[NR_TASKS]
   __attribute__((__section__(".data.task")));
 
-#if 0
+#if 1
 struct task_struct *list_head_to_task_struct(struct list_head *l)
 {
   return list_entry( l, struct task_struct, list);
@@ -19,6 +19,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 extern struct list_head blocked;
 struct list_head freequeue;
 struct list_head readyqueue;
+struct task_struct * idle_task;
 
 
 /* get_DIR - Returns the Page Directory address for task 't' */
@@ -57,18 +58,31 @@ void cpu_idle(void)
 
 void init_idle (void)
 {
-	// Obtenir el primer PCB lliure
+	// Obtenir el primer element de la llista de lliures
 	struct list_head* item = list_first(&freequeue);
 	// Eliminem entrada de la llista
 	list_del(item);
 
 	// Obtenir punter al task_struct (=== PCB)
-	//struct task_struct* pcb = list_head_to_task_struct(item);
+	struct task_struct* pcb = list_head_to_task_struct(item);
 	// Assignar el PID = 0
-	//pcb->PID = 0;
+	pcb->PID = 0;
 
 	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
-	//allocate_DIR(pcb);
+	allocate_DIR(pcb);
+
+	/* Initialize an execution context for the process to execute cpu_idle function when it gets assigned the cpu */
+	/* -- dynamic link -- */
+	// Obtenim el task union del proces per treballar amb la seva pila
+	union task_union* ps_union = (union task_union*)pcb;
+
+	ps_union->stack[KERNEL_STACK_SIZE - 1] = (unsigned long)&cpu_idle; // address of the cpu_idle function (@ret: es ella mateixa, sempre es crida a si mateix)
+	ps_union->stack[KERNEL_STACK_SIZE - 2] = 0; // %ebp value
+
+	pcb->kernel_esp = &(ps_union->stack[KERNEL_STACK_SIZE - 2]); // Posem valor a %esp (stack pointer)
+
+	// Inicialitzar variable global idle_task amb el pcb
+	idle_task = pcb;
 }
 
 void init_task1(void)

@@ -18,6 +18,7 @@ struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list; // Punter/Posicio a la llista de freequeue (pcb lliure) 
+  unsigned int kernel_esp; // %esp: Apunta al top de la pila de sistema (faig servir int perque es CPU de 32 bits, si no long)
 };
 
 union task_union {
