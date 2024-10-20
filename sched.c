@@ -87,6 +87,37 @@ void init_idle (void)
 
 void init_task1(void)
 {
+	// Obtenir el primer element de la llista de lliures
+	struct list_head* item = list_first(&freequeue);
+	// Eliminem entrada de la llista
+	list_del(item);
+
+	// Obtenir punter al task_struct (=== PCB)
+	struct task_struct* pcb = list_head_to_task_struct(item);
+	// Assignar el PID = 1 (Initial task --> Pare de tota la resta)
+	pcb->PID = 1;
+
+	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
+	allocate_DIR(pcb);
+
+	// Inicialitzar espai d'adreces del proces
+	// Alocata pagines fisiques per contenir l'espai d'adreces de l'usuari (tant codi com pagines de dades) i 
+	// afegeix a la taula de pagines la traduccio logica a fisica d'aquestes pagines
+	set_user_pages(pcb);
+
+
+	// Obtenim el task union del proces per treballar amb la seva pila
+	union task_union* ps_union = (union task_union*)pcb;
+
+	// Fem que la tss apunti al system stack del nou proces
+	// Al .h tenim definida una funcio que fa el mateix que: &(ps_union->stack[KERNEL_STACK_SIZE])
+	tss.esp0 = KERNEL_ESP(ps_union);
+
+	// Ara MSR que apunti tambe al system stack del nou proces
+	writeMSR(0x175, tss.esp0);
+
+	// Set its page directory as the current page directory in the system, by using the set_cr3
+	set_cr3(pcb->dir_pages_baseAddr);
 }
 
 
