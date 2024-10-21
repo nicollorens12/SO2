@@ -144,6 +144,28 @@ struct task_struct* current()
   return (struct task_struct*)(ret_value&0xfffff000);
 }
 
-void task_switch(union task_union*t){
+void inner_task_switch(union task_union *new){
+	set_cr3(get_DIR(&(new->task))); //  Cambio de la paginacion a la del nuevo proceso
 	
+	tss.esp0 = KERNEL_ESP((union task_union *)new); 
+	writeMSR(0x175, (int) tss.esp0);
+
+	
+	// current()->kernel_esp = %ebp
+	__asm__ __volatile__ ( 
+		"mov %%ebp,%0" 
+		: "=g" (current()->kernel_esp) 
+		:);
+
+	// %esp = new->task.kernel_esp 	
+	__asm__ __volatile__ (
+		"mov %0, %%esp"
+		: // No hay variable destino
+		: "g" (new->task.kernel_esp)); // g indica que la variable entre paréntesis es de origen
+
+	__asm__ __volatile__ (
+		"pop %%ebp\n\t"
+		"ret"
+		:
+		:);
 }

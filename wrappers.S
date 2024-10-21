@@ -56,3 +56,4 @@ ENTRY(gettime)
 	popl %ebp
 
 	ret
+

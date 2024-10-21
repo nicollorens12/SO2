@@ -47,6 +47,7 @@ void init_sched(void);
 
 struct task_struct * current();
 
+void inner_task_switch(union task_union *new);
 void task_switch(union task_union*t);
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
@@ -63,4 +64,4 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest);
 int needs_sched_rr();
 void update_sched_data_rr();
 
-#endif  /* __SCHED_H__ */
+#endif
