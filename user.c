@@ -42,5 +42,24 @@ int __attribute__ ((__section__(".text.main")))
 	//char* p = 0;
 	//*p = 'x';
 
+	//Test getpid
+	buff = "-- Test getpid() --";
+	write(1, buff, strlen(buff));
+	int pid = getpid();
+	if(pid != -1){
+		itoa(pid, buff);
+		write(1,buff, strlen(buff));
+	}
+	else{
+		buff = "Error in getpid()";
+		write(1, buff, strlen(buff));
+		perror();
+	}
+	
+	
+	buff = "--\n\n";
+	write(1, buff, strlen(buff));
+
+
   while(1) { }
 }
