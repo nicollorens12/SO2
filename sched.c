@@ -150,22 +150,7 @@ void inner_task_switch(union task_union *new){
 	tss.esp0 = KERNEL_ESP((union task_union *)new); 
 	writeMSR(0x175, (int) tss.esp0);
 
-	
-	// current()->kernel_esp = %ebp
-	__asm__ __volatile__ ( 
-		"mov %%ebp,%0" 
-		: "=g" (current()->kernel_esp) 
-		:);
+	current()->kernel_esp = get_ebp();
 
-	// %esp = new->task.kernel_esp 	
-	__asm__ __volatile__ (
-		"mov %0, %%esp"
-		: // No hay variable destino
-		: "g" (new->task.kernel_esp)); // g indica que la variable entre paréntesis es de origen
-
-	__asm__ __volatile__ (
-		"pop %%ebp\n\t"
-		"ret"
-		:
-		:);
+	set_esp(new->task.kernel_esp);
 }

@@ -114,6 +114,29 @@ void keyboard_routine() {
     // Si el bit más significativo no está en 1, significa que es una tecla presionada (no liberada)
     if (!(scancode & 0x80)) {
         char key = char_map[scancode];
+        bool errorSameProcess = false;
+        
+        if(key == 'o'){ //Change to idle
+          struct task_struct* pcb = current();
+          if (pcb->pid == 0){
+            errorSameProcess = true;
+          }
+          else{
+            
+          }
+        }
+        else if (key == 'p'){ //Change to init
+          struct task_struct* pcb = current();
+          if (pcb->pid == 1){
+            errorSameProcess = true;
+          }
+          else{
+            
+          }
+        }
+        if(errorSameProcess){
+          
+        }
         printc(key);
     }
 

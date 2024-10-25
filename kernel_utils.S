@@ -9,7 +9,6 @@ ENTRY(task_switch)
 	push %esi
 	push %edi
 
-	# A inner task switch le pasamos el segundo parámetro (el pcb) que está en 8(%ebp)
 	push 8(%ebp)
 	call inner_task_switch
 	addl $4, %esp
@@ -19,5 +18,24 @@ ENTRY(task_switch)
 	pop %ebx
 
 	mov %ebp,%esp
+	pop %ebp
+	ret
+
+ENTRY(get_ebp)
+	push %ebp
+	mov %esp,%ebp
+
+	mov 0(%esp),%eax
+
+	mov %ebp,%esp
+	pop %ebp
+	ret
+
+ENTRY(set_esp)
+	push %ebp
+	mov %esp,%ebp
+
+	movl 8(%ebp), %esp
+
 	pop %ebp
 	ret

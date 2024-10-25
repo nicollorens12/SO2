@@ -87,4 +87,37 @@ gp_return:
 	mov -1, %eax
 gp_no_error:
 	pop %ebp
-	ret
+	ret 
+
+
+ENTRY(fork)
+	push %ebp
+	mov %esp,%ebp
+	
+	# Save to user stack
+	push %ebx
+	push %esi
+	push %edi
+	
+	movl $2, %eax
+	
+	push $gp_return
+	push %ebp
+	mov %esp,%ebp
+
+	sysenter
+
+f_return:
+	pop %ebp
+	add $4, %esp
+	pop %edi
+	pop %esi
+	pop %ebx
+	cmp $0, %eax
+	jge f_no_error
+	neg %eax
+	mov %eax, errno
+	mov -1, %eax
+f_no_error:
+	pop %ebp
+	ret 

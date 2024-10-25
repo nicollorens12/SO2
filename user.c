@@ -60,6 +60,12 @@ int __attribute__ ((__section__(".text.main")))
 	buff = "--\n\n";
 	write(1, buff, strlen(buff));
 
+	//buff = "-- Test fork() --";
+	//write(1, buff, strlen(buff));
+	//int pidChild = fork();
+	//itoa(pidChild, buff);
+	//write(1,buff, strlen(buff));
+
 
   while(1) { }
 }
