@@ -89,6 +89,9 @@ void init_idle (void)
 
 	// Inicialitzar variable global idle_task amb el pcb
 	idle_task = pcb;
+
+	// Afegir el PCB a la cua de ready
+	list_add_tail(&(pcb->list), &readyqueue);
 }
 
 void init_task1(void)
@@ -125,6 +128,9 @@ void init_task1(void)
 
 	// Set its page directory as the current page directory in the system, by using the set_cr3
 	set_cr3(pcb->dir_pages_baseAddr);
+
+	// Afegir el PCB a la cua de ready
+	list_add_tail(&(pcb->list), &readyqueue);
 }
 
 
@@ -197,7 +203,7 @@ void sched_next_rr(){
 	buff = "Current pid before switch is: ";
 	printk(buff);
 	printk(pid_str);
-	inner_task_switch(next);
+	task_switch(next);
 	itoa(current()->PID, pid_str, 10);
 	buff = "Current pid after switch is: ";
 	printk(buff);
