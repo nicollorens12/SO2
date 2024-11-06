@@ -79,6 +79,7 @@ int sys_fork()
 	// Init KERNEL/SYSTEM --> Podem copiarlo
 	for (int i = 0; i < NUM_PAG_KERNEL; ++i)
 		set_ss_pag(pt_child, i, get_frame(pt_parent, i));
+		// pt_child[i] = pt_parent[i];  // 1 - Comentari del correu
 
 	// Init CODE --> Podem copiarlo (Necessitem offset d'inici de pagines del codi)
 	for (int i = 0; i < NUM_PAG_CODE; ++i)
@@ -93,7 +94,7 @@ int sys_fork()
 		if (free_pf < 0)
 		{
 			// Alliberar pagines fisiques ja assignades
-			free_user_pages(pcb_child); // --> m' "estalvio" bucle free_frame
+			free_user_pages(pcb_child); // --> m' "estalvio" bucle free_frame ?? Preguntar si aixi ja esta be o he de fer el bucle de free_frame
 
 			// Alliberar PCB del fill --> El tornem a ficar a la cua
 			list_add_tail( &(pcb_child->list), &freequeue);
@@ -102,7 +103,7 @@ int sys_fork()
 		}
 		
 		// Assignem la pagina fisica
-		set_ss_ag(pt_child, PAG_LOG_INIT_DATA + i, free_pf);
+		set_ss_pag(pt_child, PAG_LOG_INIT_DATA + i, free_pf);
 	}
 
 
@@ -113,16 +114,15 @@ int sys_fork()
 		/*
 			- He de buscar a totes les pagines?? (Les de kernel no crec que calgui)
 			- No es podria fer servir un punt fixe a l'espai entre PAG_CODE i PAG_DATA?
-			- De moment agafare les que hi hagi mes enlla de PAG_DATA (que van a xocar contra Stack, pero es a l'esquema dels apunts extrets de  Alex Pajuelo)
-				tampoc comprobare que ja estigui ocupada pel momento per simplificar
+			- De moment agafare les que hi hagi mes enlla de PAG_DATA 
 
 			- En cas que no hi hagues pagines lliures al proces pare hauria de retornar error (i lliberar estructures) --> de moment no ho toquem
 		*/
 
 		// Mapegem pagina temporalment al pare; copiem dades al fill; desfem la relacio	
 		set_ss_pag(pt_parent, PAG_LOG_INIT_DATA + NUM_PAG_DATA + i, get_frame(pt_child, PAG_LOG_INIT_DATA + i));
-		// AJUDA: Com puc pasar adientment les adreces --> de moment nomes se m'acut passant-li l'adreca de la taula
     	copy_data(&(pt_parent[PAG_LOG_INIT_DATA + NUM_PAG_DATA + i]), &(pt_child[PAG_LOG_INIT_DATA + i]), PAGE_SIZE);
+    	// copy_data( (PAG_LOG_INIT_DATA + NUM_PAG_DATA + i) << 12, (PAG_LOG_INIT_DATA + i) << 12, PAGE_SIZE);  // 2 - Comentari del correu
     	del_ss_pag(pt_parent, PAG_LOG_INIT_DATA + NUM_PAG_DATA + i);
 	}
 
@@ -158,12 +158,33 @@ int sys_fork()
 	list_add_tail( &(pcb_child->list), &readyqueue);
   	
   	// Return PID fill
-  	return pcb->PID;
+  	return pcb_child->PID;
 }
 
 
 void sys_exit()
 {  
+	struct task_struct *pcb = current();
+	page_table_entry *pt_ps = get_PT(pcb);
+
+	// Alliberar PF (user data) i mapejos a la page table del proces
+	for (int i = 0; i < NUM_PAG_DATA; ++i)
+	{
+		int pf = get_frame(pt_ps, PAG_LOG_INIT_DATA + i);
+		free_frame(pf);
+		del_ss_pag(pt_ps, PAG_LOG_INIT_DATA + i);
+	}
+
+	// Cambiem el PCB
+	pcb->PID = -1;
+
+	// Cal que retoqui dir_pages_baseAddr i kernel_esp?? --> Diria que no cal, ja que al crear un nou proces amb fork aquests es 'machaquen'
+
+	// Posem la pcb a la llista de lliures
+	list_add_tail( &(pcb->list), &freequeue);
+
+	// Use the scheduler interface to select a new process to be executed and make a context switch	
+	sched_next_rr();
 }
 
 
