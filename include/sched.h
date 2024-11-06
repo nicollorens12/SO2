@@ -19,6 +19,7 @@ struct task_struct {
   page_table_entry * dir_pages_baseAddr;
   struct list_head list; // Punter/Posicio a la llista de freequeue (pcb lliure) 
   unsigned int kernel_esp; // %esp: Apunta al top de la pila de sistema (faig servir int perque es CPU de 32 bits, si no long)
+  int quantum; // max time that the process should spend without stop on running
 };
 
 union task_union {
@@ -61,9 +62,15 @@ page_table_entry * get_PT (struct task_struct *t) ;
 page_table_entry * get_DIR (struct task_struct *t) ;
 
 /* Headers for the scheduling policy */
+void schedule(void);
+
 void sched_next_rr();
 void update_process_state_rr(struct task_struct *t, struct list_head *dest);
 int needs_sched_rr();
 void update_sched_data_rr();
+
+/* Headers for quantum */
+int get_quantum (struct task_struct *t);
+void set_quantum (struct task_struct *t, int new_quantum);
 
 #endif

@@ -114,28 +114,30 @@ void keyboard_routine() {
     // Si el bit más significativo no está en 1, significa que es una tecla presionada (no liberada)
     if (!(scancode & 0x80)) {
         char key = char_map[scancode];
-        bool errorSameProcess = false;
-        
-        if(key == 'o'){ //Change to idle
+        int errorSameProcess = 0;
+        printc(key);
+        if(key == 'p'){ //Swap
           struct task_struct* pcb = current();
-          if (pcb->pid == 0){
-            errorSameProcess = true;
-          }
-          else{
-            
+          struct task_struct* next_pcb = list_head_to_task_struct(list_first(&readyqueue));
+          if (next_pcb->PID == pcb->PID) {
+            errorSameProcess = 1;
+          } else {
+            inner_task_switch((union task_union*)next_pcb);
+
           }
         }
-        else if (key == 'p'){ //Change to init
-          struct task_struct* pcb = current();
-          if (pcb->pid == 1){
-            errorSameProcess = true;
-          }
-          else{
-            
-          }
-        }
+
         if(errorSameProcess){
-          
+          printk("Error: Can't change to the same process\n");
+        }
+        else{
+          if(current()->PID != 0){
+            printk("Process changed ");
+            char buff[256];
+            itohex(current()->PID, buff);
+            printk(buff);
+            printk("\n");
+          }
         }
         printc(key);
     }
@@ -146,6 +148,8 @@ void keyboard_routine() {
 void clock_routine(){
   zeos_ticks++;
   zeos_show_clock();
+
+  schedule();
 }
 
 
