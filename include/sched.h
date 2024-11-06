@@ -37,6 +37,8 @@ extern union task_union task[NR_TASKS]; /* Vector de tasques */
 extern struct list_head freequeue;
 extern struct list_head readyqueue;
 
+extern int pid_free; // Next pid available to asign on fork
+
 
 /* Inicialitza les dades del proces inicial */
 void init_task1(void);

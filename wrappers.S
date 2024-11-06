@@ -101,7 +101,7 @@ ENTRY(fork)
 	
 	movl $2, %eax
 	
-	push $gp_return
+	push $f_return
 	push %ebp
 	mov %esp,%ebp
 

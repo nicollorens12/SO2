@@ -21,6 +21,8 @@ struct list_head freequeue;
 struct list_head readyqueue;
 struct task_struct * idle_task;
 
+int pid_free = 2;
+
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
