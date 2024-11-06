@@ -121,3 +121,36 @@ f_return:
 f_no_error:
 	pop %ebp
 	ret 
+
+
+ENTRY(exit)
+	push %ebp
+	movl %esp,%ebp
+	
+	# Save to user stack (No seria necessari, ho mantinc per estructura de tots el wrappers)
+	push %ebx
+	push %esi
+	push %edi
+	
+	movl $1, %eax
+	
+	push $ex_return
+	push %ebp
+	movl %esp,%ebp
+
+	sysenter
+
+ex_return:
+	pop %ebp
+	add $4, %esp
+	pop %edi
+	pop %esi
+	pop %ebx
+	cmp $0, %eax
+	jge ex_no_error
+	neg %eax
+	mov %eax, errno
+	mov -1, %eax
+ex_no_error:
+	pop %ebp
+	ret 
