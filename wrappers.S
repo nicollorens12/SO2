@@ -154,3 +154,75 @@ ex_return:
 ex_no_error:
 	pop %ebp
 	ret 
+
+
+ENTRY(block)
+	push %ebp
+	mov %esp,%ebp
+	
+	# Save to user stack
+	push %ebx
+	push %esi
+	push %edi
+	
+	movl $11, %eax
+	
+	push $gp_return
+	push %ebp
+	mov %esp,%ebp
+
+	sysenter
+
+bl_return:
+	pop %ebp
+	add $4, %esp
+	pop %edi
+	pop %esi
+	pop %ebx
+	cmp $0, %eax
+	jge bl_no_error
+	neg %eax
+	mov %eax, errno
+	mov -1, %eax
+bl_no_error:
+	pop %ebp
+	ret
+
+
+ENTRY(unblock)
+	push %ebp
+	mov %esp,%ebp
+	
+	# Save to user stack
+	push %ebx
+	push %esi
+	push %edi
+
+	# Move PID parm to register (first parameter)
+	movl  8(%ebp), %edx
+	
+	movl $12, %eax
+
+	push $unbl_return
+	push %ebp
+	mov %esp,%ebp
+
+	sysenter
+
+unbl_return:
+	pop %ebp
+	add $4, %esp
+
+	pop %edx
+	
+	pop %edi
+	pop %esi
+	pop %ebx
+	cmp $0, %eax
+	jge unbl_no_error
+	neg %eax
+	mov %eax, errno
+	mov -1, %eax
+unbl_no_error:
+	pop %ebp
+	ret

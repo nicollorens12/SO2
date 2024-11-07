@@ -20,6 +20,12 @@ struct task_struct {
   struct list_head list; // Punter/Posicio a la llista de freequeue (pcb lliure) 
   unsigned int kernel_esp; // %esp: Apunta al top de la pila de sistema (faig servir int perque es CPU de 32 bits, si no long)
   int quantum; // max time that the process should spend without stop on running
+  int pending_unblocks;
+  enum state_t state;
+
+  struct task_struct *parent;          /* Puntero al proceso padre */
+  struct list_head children;           /* Lista de hijos */
+  struct list_head sibling;            /* Nodo en la lista de hijos de su padre */
 };
 
 union task_union {
@@ -39,7 +45,6 @@ extern struct list_head freequeue;
 extern struct list_head readyqueue;
 
 extern int pid_free; // Next pid available to asign on fork
-
 
 /* Inicialitza les dades del proces inicial */
 void init_task1(void);
