@@ -24,8 +24,8 @@ struct task_struct * idle_task;
 int pid_free = 2;
 int quantum_ticks;
 
-int task1_quantum = 6;
-int idle_quantum = 3;
+int task1_quantum = 50;
+int idle_quantum = 100;
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
@@ -89,9 +89,6 @@ void init_idle (void)
 
 	// Inicialitzar variable global idle_task amb el pcb
 	idle_task = pcb;
-
-	// Afegir el PCB a la cua de ready
-	list_add_tail(&(pcb->list), &readyqueue);
 }
 
 void init_task1(void)
@@ -128,9 +125,6 @@ void init_task1(void)
 
 	// Set its page directory as the current page directory in the system, by using the set_cr3
 	set_cr3(pcb->dir_pages_baseAddr);
-
-	// Afegir el PCB a la cua de ready
-	list_add_tail(&(pcb->list), &readyqueue);
 }
 
 
@@ -187,20 +181,17 @@ void sched_next_rr(){
 		next = list_head_to_task_struct(lf);
 	}
 	else{
-		// Si la lista de ready esta vacía, se debe ejecutar el proceso idle.
+		char* buff = "No more processes to execute. Switching to idle task\n";
+		printk(buff);
 		next = idle_task;
 	}
 
-	// Se pone el estado del proceso a RUN. - Creo que no es necesario
-	// next->state=ST_RUN;
-
-	// Se asigna la variable global de quantum el quantum del proceso siguiente.
 	quantum_ticks = get_quantum(next);
 
 	char* buff;
 	char pid_str[10];
 	itoa(current()->PID, pid_str, 10);
-	buff = "Current pid before switch is: ";
+	buff = "\nCurrent pid before switch is: ";
 	printk(buff);
 	printk(pid_str);
 	task_switch(next);
@@ -210,24 +201,20 @@ void sched_next_rr(){
 	printk(pid_str);
 }
 
-void update_process_state_rr(struct task_struct *t, struct list_head *dest){
-	if(dest == NULL){ // Esto significa que el proceso esta en Running
-		list_add_tail(&(t->list), dest);
+void update_process_state_rr(struct task_struct *t, struct list_head *dest)
+{ 
+	struct list_head * list_tmp = &t->list;
+	/* Si el proceso esta dentro de una lista, va a tener un puntero al elemento previo y siguiente
+	Así que solo comprobando esto podemos saber si es necesario eliminarlo de la lista dónde se encuentra*/
+	if(!(list_tmp->prev == NULL && list_tmp->next == NULL)){
+		list_del(list_tmp);
 	}
-	else{
-		list_del(&(t->list));
-		list_add_tail(&(t->list), dest);
-	}
+
+	if (dest) list_add_tail(list_tmp, dest);
 }
 
 int needs_sched_rr(){
 	if(quantum_ticks > 0) return 0;
-
-	if(list_empty(&readyqueue)){ // En el caso de que no tengamos procesos ready para ponerse en CPU
-		// Aun asi, probablemente no se usa ya que tenemos el idle_task 
-		quantum_ticks = get_quantum(current());
-		return 0;
-	}
 	return 1;
 }
 
@@ -241,7 +228,7 @@ void update_sched_data_rr(){
 	//itoa(current()->PID, pid_str, 10);
 	//itoa(quantum_ticks, ticks_str, 10);
 //
-	//buff = "Quantum ticks left for process ";
+	//buff = "\nQuantum ticks left for process ";
 	//printk(buff);
 	//printk(pid_str);
 	//buff = " is ";
