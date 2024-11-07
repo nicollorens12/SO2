@@ -22,7 +22,7 @@ struct list_head readyqueue;
 struct task_struct * idle_task;
 
 int pid_free = 2;
-int quantum_ticks;
+int quantum_ticks = 10;
 
 int task1_quantum = 50;
 int idle_quantum = 100;
@@ -163,10 +163,12 @@ void inner_task_switch(union task_union *new){
 }
 
 void schedule(){
-	update_sched_data_rr();
-	if(needs_sched_rr()) {
-		update_process_state_rr(current(), &readyqueue);
-		sched_next_rr();
+	if(quantum_ticks != NULL){
+		update_sched_data_rr();
+		if(needs_sched_rr()) {
+			update_process_state_rr(current(), &readyqueue);
+			sched_next_rr();
+		}
 	}
 }
 
@@ -215,6 +217,12 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 
 int needs_sched_rr(){
 	if(quantum_ticks > 0) return 0;
+
+	//if(list_empty(&readyqueue)){
+	//	quantum_ticks = current()->quantum;
+	//	return 0;
+	//}
+
 	return 1;
 }
 

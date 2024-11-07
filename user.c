@@ -79,15 +79,15 @@ int __attribute__ ((__section__(".text.main")))
     if(write(1, mesg, strlen(mesg)) == -1) perror();
     mesg="\n";
     if(write(1, mesg, strlen(mesg)) == -1) perror();
-  }
-  else{
+  	}
+  	else{
     mesg="I am the FATHER and my PID is ";
     if(write(1, mesg, strlen(mesg)) == -1) perror();
     itoa(getpid(), mesg);
     if(write(1, mesg, strlen(mesg)) == -1) perror();
     mesg="\n";
     if(write(1, mesg, strlen(mesg)) == -1) perror();
-  }
+  	}
 
   while(1) { }
 }
