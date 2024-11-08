@@ -16,6 +16,8 @@
 #include <errno.h>
 
 extern int zeos_ticks;
+extern struct list_head blocked;
+extern struct task_struct * idle_task;
 
 #define LECTURA 0
 #define ESCRIPTURA 1
@@ -127,6 +129,11 @@ int sys_fork()
 
 	// Assignar el PID
 	pcb_child->PID = pid_free++;
+	pcb_child->pending_unblocks = 0;
+	pcb_child->parent = pcb_parent;  // Asignar el proceso padre
+
+	// Añadir el hijo a la lista de hijos del padre
+	list_add_tail(&pcb_child->list, &pcb_parent->children);
 
 	// Initialize the fields of the task_struct that are not common to the child.
 	/* 
@@ -158,29 +165,61 @@ int sys_fork()
 
 
 void sys_exit()
-{  
-	struct task_struct *pcb = current();
-	page_table_entry *pt_ps = get_PT(pcb);
+{
+    struct task_struct *pcb = current();
+    page_table_entry *pt_ps = get_PT(pcb);
 
-	// Alliberar PF (user data) i mapejos a la page table del proces
-	for (int i = 0; i < NUM_PAG_DATA; ++i)
-	{
-		int pf = get_frame(pt_ps, PAG_LOG_INIT_DATA + i);
-		free_frame(pf);
-		del_ss_pag(pt_ps, PAG_LOG_INIT_DATA + i);
-	}
+    // Liberar páginas físicas (PF) (user data) y mapeos de la page table del proceso
+    for (int i = 0; i < NUM_PAG_DATA; ++i)
+    {
+        int pf = get_frame(pt_ps, PAG_LOG_INIT_DATA + i);
+        free_frame(pf);              // Liberar el marco de página
+        del_ss_pag(pt_ps, PAG_LOG_INIT_DATA + i); // Eliminar el mapeo
+    }
 
-	// Cambiem el PCB
-	pcb->PID = -1;
+    // Cambiar el PID del proceso a -1 para indicar que está terminado
+    pcb->PID = -1;
 
-	// Cal que retoqui dir_pages_baseAddr i kernel_esp?? --> Diria que no cal, ja que al crear un nou proces amb fork aquests es 'machaquen'
+    if(pcb->parent != NULL){
+    	struct task_struct *pcb_parent = list_entry(pcb->parent, struct task_struct, pcb->parent->list);
+    	struct list_head *pos, *n;
+    	list_for_each_safe(pos,n,&pcb_parent->children){
+    		struct task_struct *child = list_entry(pos, struct task_struct, list);
 
-	// Posem la pcb a la llista de lliures
-	list_add_tail( &(pcb->list), &freequeue);
+    		if(child->PID == pcb->PID){
+    			list_del(pos);
+    		}
+    	}
+    }
 
-	// Use the scheduler interface to select a new process to be executed and make a context switch	
-	sched_next_rr();
+    // Si el proceso tiene hijos, asignarles un nuevo padre (idle_task)
+    if (!list_empty(&pcb->children)) {
+        struct list_head *pos, *n;
+        list_for_each_safe(pos, n, &pcb->children) {
+            // Obtener el hijo del proceso
+            struct task_struct *child = list_entry(pos, struct task_struct, list);
+            
+            // Asignar a los hijos como hijos de idle_task
+            child->parent = idle_task;
+            
+            // Eliminar el hijo de la lista de hijos del proceso actual
+            list_del(pos);
+            
+            // Añadir el hijo a la lista de hijos de idle_task
+            list_add_tail(pos, &idle_task->children);
+        }
+    }
+
+    // Añadir el PCB a la lista de procesos libres
+    list_add_tail(&(pcb->list), &freequeue);
+
+    // Utilizar la interfaz del planificador para seleccionar un nuevo proceso para ejecutar
+    // y hacer un cambio de contexto.
+    sched_next_rr();
 }
+
+
+
 
 
 
@@ -234,3 +273,53 @@ int sys_write(int fd, char * buffer, int size){
 int sys_gettime(){
 	return zeos_ticks;
 }
+
+int sys_block(){
+	if(current()->pending_unblocks > 0) current()->pending_unblocks--;
+	else if (current()->pending_unblocks == 0){
+		current()->state = ST_BLOCKED;
+		update_process_state_rr(current(), &blocked);
+		sched_next_rr();
+	}
+	else return -1;
+
+	return 1;
+}
+
+int sys_unblock(int PID) {
+    if (PID < 0) {
+        return -1;
+    }
+
+    struct task_struct *parent = current();
+
+    // Verificar si el proceso actual tiene hijos
+    struct list_head *pos;
+    list_for_each(pos, &parent->children) {
+        struct task_struct *child = list_entry(pos, struct task_struct, children);
+		
+        if (child->PID == PID) {
+
+            if (child->state != ST_BLOCKED) {
+                child->pending_unblocks++;
+            }
+			else{
+				// Eliminar el proceso hijo de la lista de bloqueados
+				list_del(&child->list);
+
+				// Cambiar el estado del hijo a listo (TASK_READY)
+				child->state = ST_READY;
+
+				// Añadir el proceso hijo a la lista de procesos listos
+				list_add_tail(&child->list, &readyqueue);
+			}
+            // Notificar al planificador
+            sched_next_rr();
+
+            return 0; 
+        }
+    }
+    return -1; 
+}
+
+

@@ -73,7 +73,9 @@ void init_idle (void)
 	// Assignar el PID = 0
 	pcb->PID = 0;
 	set_quantum(pcb, idle_quantum);
-
+	pcb->pending_unblocks = 0;
+	pcb->parent = NULL;
+	INIT_LIST_HEAD(&pcb->children);
 	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
 	allocate_DIR(pcb);
 
@@ -103,6 +105,10 @@ void init_task1(void)
 	// Assignar el PID = 1 (Initial task --> Pare de tota la resta)
 	pcb->PID = 1;
 	set_quantum(pcb, task1_quantum);
+	pcb->pending_unblocks = 0;
+	pcb->state = ST_RUN;
+	pcb->parent = NULL;
+	INIT_LIST_HEAD(&pcb->children);
 
 	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
 	allocate_DIR(pcb);
@@ -166,6 +172,7 @@ void schedule(){
 	if(quantum_ticks != NULL){
 		update_sched_data_rr();
 		if(needs_sched_rr()) {
+			current()->state = ST_READY;
 			update_process_state_rr(current(), &readyqueue);
 			sched_next_rr();
 		}
@@ -189,7 +196,7 @@ void sched_next_rr(){
 	}
 
 	quantum_ticks = get_quantum(next);
-
+	next->state = ST_RUN;
 	char* buff;
 	char pid_str[10];
 	itoa(current()->PID, pid_str, 10);

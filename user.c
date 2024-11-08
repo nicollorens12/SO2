@@ -60,6 +60,10 @@ int __attribute__ ((__section__(".text.main")))
 	buff = "--\n\n";
 	write(1, buff, strlen(buff));
 
+	pid = getpid();
+
+	unblock(pid);
+
 
 	char * mesg;
 	mesg = "Test Fork";
