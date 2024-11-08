@@ -25,7 +25,6 @@ struct task_struct {
 
   struct task_struct *parent;          /* Puntero al proceso padre */
   struct list_head children;           /* Lista de hijos */
-  struct list_head sibling;            /* Nodo en la lista de hijos de su padre */
 };
 
 union task_union {

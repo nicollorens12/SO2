@@ -150,7 +150,7 @@ ex_return:
 	jge ex_no_error
 	neg %eax
 	mov %eax, errno
-	mov -1, %eax
+	mov $-1, %eax
 ex_no_error:
 	pop %ebp
 	ret 
@@ -183,7 +183,7 @@ bl_return:
 	jge bl_no_error
 	neg %eax
 	mov %eax, errno
-	mov -1, %eax
+	mov $-1, %eax
 bl_no_error:
 	pop %ebp
 	ret
@@ -203,6 +203,8 @@ ENTRY(unblock)
 	
 	movl $12, %eax
 
+	push %edx
+
 	push $unbl_return
 	push %ebp
 	mov %esp,%ebp
@@ -218,11 +220,12 @@ unbl_return:
 	pop %edi
 	pop %esi
 	pop %ebx
+
 	cmp $0, %eax
 	jge unbl_no_error
 	neg %eax
 	mov %eax, errno
-	mov -1, %eax
+	mov $-1, %eax
 unbl_no_error:
 	pop %ebp
 	ret

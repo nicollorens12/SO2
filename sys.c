@@ -138,7 +138,7 @@ int sys_fork()
 	pcb_child->parent = pcb_parent;  // Asignar el proceso padre
 
 	// Añadir el hijo a la lista de hijos del padre
-	list_add_tail(&pcb_child->sibling, &pcb_parent->children);
+	list_add_tail(&pcb_child->list, &pcb_parent->children);
 
 	// Initialize the fields of the task_struct that are not common to the child.
 	/* 
@@ -184,6 +184,18 @@ void sys_exit()
 
     // Cambiar el PID del proceso a -1 para indicar que está terminado
     pcb->PID = -1;
+
+    if(pcb->parent != NULL){
+    	struct task_struct *pcb_parent = list_entry(pcb->parent, struct task_struct, pcb->parent->list);
+    	struct list_head *pos, *n;
+    	list_for_each_safe(pos,n,&pcb_parent->children){
+    		struct task_struct *child = list_entry(pos, struct task_struct, list);
+
+    		if(child->PID == pcb->PID){
+    			list_del(pos);
+    		}
+    	}
+    }
 
     // Si el proceso tiene hijos, asignarles un nuevo padre (idle_task)
     if (!list_empty(&pcb->children)) {
@@ -268,30 +280,30 @@ int sys_gettime(){
 }
 
 int sys_block(){
-	current()->state = ST_BLOCKED;
-	update_process_state_rr(current(), &blocked);
-	sched_next_rr();
+	if(current()->pending_unblocks > 0) current()->pending_unblocks--;
+	else if (current()->pending_unblocks == 0){
+		current()->state = ST_BLOCKED;
+		update_process_state_rr(current(), &blocked);
+		sched_next_rr();
+	}
+	else return -1;
 
 	return 1;
 }
 
 int sys_unblock(int PID) {
-    // Verificar si el PID es válido
     if (PID < 0) {
-        return -EINVAL; // Error: PID inválido
+        return -1;
     }
 
-    // Obtener el proceso actual (padre)
     struct task_struct *parent = current();
 
     // Verificar si el proceso actual tiene hijos
     struct list_head *pos;
     list_for_each(pos, &parent->children) {
-        struct task_struct *child = list_entry(pos, struct task_struct, sibling);
+        struct task_struct *child = list_entry(pos, struct task_struct, children);
 		
-        // Comprobar si el PID del hijo coincide con el PID proporcionado
         if (child->PID == PID) {
-            // El proceso hijo ha sido encontrado y está bloqueado
 
             if (child->state != ST_BLOCKED) {
                 child->pending_unblocks++;
@@ -309,12 +321,10 @@ int sys_unblock(int PID) {
             // Notificar al planificador
             sched_next_rr();
 
-            return 0; // El proceso hijo ha sido desbloqueado correctamente
+            return 0; 
         }
     }
-
-    // Si llegamos aquí, no se encontró un hijo con el PID especificado
-    return -1; // Error: No se encontró el proceso
+    return -1; 
 }
 
 

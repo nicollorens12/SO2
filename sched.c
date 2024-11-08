@@ -76,7 +76,6 @@ void init_idle (void)
 	pcb->pending_unblocks = 0;
 	pcb->parent = NULL;
 	INIT_LIST_HEAD(&pcb->children);
-	INIT_LIST_HEAD(&pcb->sibling);
 	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
 	allocate_DIR(pcb);
 
@@ -110,7 +109,6 @@ void init_task1(void)
 	pcb->state = ST_RUN;
 	pcb->parent = NULL;
 	INIT_LIST_HEAD(&pcb->children);
-	INIT_LIST_HEAD(&pcb->sibling);
 
 	// Initialize field dir_pages_baseAaddr with a new directory to store the process address space
 	allocate_DIR(pcb);
