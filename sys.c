@@ -78,8 +78,7 @@ int sys_fork()
 
 	// Init KERNEL/SYSTEM --> Podem copiarlo
 	for (int i = 0; i < NUM_PAG_KERNEL; ++i)
-		set_ss_pag(pt_child, i, get_frame(pt_parent, i));
-		// pt_child[i] = pt_parent[i];  // 1 - Comentari del correu
+		pt_child[i] = pt_parent[i];
 
 	// Init CODE --> Podem copiarlo (Necessitem offset d'inici de pagines del codi)
 	for (int i = 0; i < NUM_PAG_CODE; ++i)
@@ -94,7 +93,12 @@ int sys_fork()
 		if (free_pf < 0)
 		{
 			// Alliberar pagines fisiques ja assignades
-			free_user_pages(pcb_child); // --> m' "estalvio" bucle free_frame ?? Preguntar si aixi ja esta be o he de fer el bucle de free_frame
+			free_user_pages(pcb_child);
+			for (int j = 0; j <= i; ++j)
+			{
+				free_frame(get_frame(pt_child, PAG_LOG_INIT_DATA + i));
+				del_ss_pag(pt_child, PAG_LOG_INIT_DATA + i);
+			}	
 
 			// Alliberar PCB del fill --> El tornem a ficar a la cua
 			list_add_tail( &(pcb_child->list), &freequeue);
@@ -110,20 +114,11 @@ int sys_fork()
 	// Heretar USER DATA
 	for (int i = 0; i < NUM_PAG_DATA; ++i)
 	{
-		// Busquem pagines lliures del pare (es podria fer una rutina que fos mes eficient o adient)	
-		/*
-			- He de buscar a totes les pagines?? (Les de kernel no crec que calgui)
-			- No es podria fer servir un punt fixe a l'espai entre PAG_CODE i PAG_DATA?
-			- De moment agafare les que hi hagi mes enlla de PAG_DATA 
-
-			- En cas que no hi hagues pagines lliures al proces pare hauria de retornar error (i lliberar estructures) --> de moment no ho toquem
-		*/
-
+		// Agafo adreces despres Data + Code (a Zeos estan juntes, mirar man) --> Directament despres de les adreces de codi
 		// Mapegem pagina temporalment al pare; copiem dades al fill; desfem la relacio	
-		set_ss_pag(pt_parent, PAG_LOG_INIT_DATA + NUM_PAG_DATA + i, get_frame(pt_child, PAG_LOG_INIT_DATA + i));
-    	copy_data(&(pt_parent[PAG_LOG_INIT_DATA + NUM_PAG_DATA + i]), &(pt_child[PAG_LOG_INIT_DATA + i]), PAGE_SIZE);
-    	// copy_data( (PAG_LOG_INIT_DATA + NUM_PAG_DATA + i) << 12, (PAG_LOG_INIT_DATA + i) << 12, PAGE_SIZE);  // 2 - Comentari del correu
-    	del_ss_pag(pt_parent, PAG_LOG_INIT_DATA + NUM_PAG_DATA + i);
+		set_ss_pag(pt_parent, PAG_LOG_INIT_CODE + NUM_PAG_CODE + i, get_frame(pt_child, PAG_LOG_INIT_DATA + i));
+    		copy_data( (PAG_LOG_INIT_DATA + i) << 12, (PAG_LOG_INIT_CODE + NUM_PAG_CODE + i) << 12, PAGE_SIZE);
+    		del_ss_pag(pt_parent, PAG_LOG_INIT_CODE + NUM_PAG_CODE + i);
 	}
 
 
