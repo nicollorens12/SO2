@@ -37,7 +37,7 @@ write_return:
 	# en este caso hay error
 	negl %eax 
 	movl %eax, errno
-	movl -1, %eax
+	movl $-1, %eax
 ok_write:
 	popl %ebx
 	popl %ebp
@@ -84,7 +84,7 @@ gp_return:
 	jge gp_no_error
 	neg %eax
 	mov %eax, errno
-	mov -1, %eax
+	mov $-1, %eax
 gp_no_error:
 	pop %ebp
 	ret 
@@ -117,7 +117,7 @@ f_return:
 	jge f_no_error
 	neg %eax
 	mov %eax, errno
-	mov -1, %eax
+	mov $-1, %eax
 f_no_error:
 	pop %ebp
 	ret 

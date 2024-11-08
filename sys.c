@@ -181,7 +181,8 @@ void sys_exit()
     pcb->PID = -1;
 
     if(pcb->parent != NULL){
-    	struct task_struct *pcb_parent = list_entry(pcb->parent, struct task_struct, pcb->parent->list);
+    	struct task_struct *parent = pcb->parent;
+    	struct task_struct *pcb_parent = list_entry(parent, struct task_struct, parent->list);
     	struct list_head *pos, *n;
     	list_for_each_safe(pos,n,&pcb_parent->children){
     		struct task_struct *child = list_entry(pos, struct task_struct, list);
