@@ -65,6 +65,11 @@ int sys_fork()
 	// Task union del pare
 	union task_union* ps_parent = (union task_union*)pcb_parent;
 
+	// Añadir el hijo a la lista de hijos del padre
+	struct list_head * list_tmp = &pcb_child->list;
+	struct list_head * children_head = &pcb_parent->children;
+	list_add_tail(list_tmp, children_head);
+
 	// Copiem el task union del pare al fill
 	copy_data(ps_parent, ps_child, sizeof(union task_union)); // Crec que tambe es podria fer servir --> size = KERNEL_STACK_SIZE
 
@@ -127,13 +132,7 @@ int sys_fork()
 	// flush the TLB to really disable the parent process to access the child pages
 	set_cr3(get_DIR(pcb_parent));
 
-	// Assignar el PID
-	pcb_child->PID = pid_free++;
-	pcb_child->pending_unblocks = 0;
-	pcb_child->parent = pcb_parent;  // Asignar el proceso padre
-
-	// Añadir el hijo a la lista de hijos del padre
-	list_add_tail(&pcb_child->list, &pcb_parent->children);
+	
 
 	// Initialize the fields of the task_struct that are not common to the child.
 	/* 
@@ -155,6 +154,15 @@ int sys_fork()
 	// Fem que esp apunti al cim de la pila --> Aixi ja deuria estar llest per quan faci el task_switch
     pcb_child->kernel_esp = &(ps_child->stack[KERNEL_STACK_SIZE - 19]);
     
+	// Assignar el PID
+	pcb_child->PID = pid_free++;
+	set_quantum(pcb_child, 50);
+	pcb_child->pending_unblocks = 0;
+	pcb_child->parent = pcb_parent;  // Asignar el proceso padre
+	pcb_child->state = ST_READY; // El proceso hijo en ready
+	INIT_LIST_HEAD(&pcb_child->children);
+
+	
 
 	// PCB del fill --> El fiquem a la cua de ready
 	list_add_tail( &(pcb_child->list), &readyqueue);
@@ -178,38 +186,45 @@ void sys_exit()
     }
 
     // Cambiar el PID del proceso a -1 para indicar que está terminado
-    pcb->PID = -1;
+    //pcb->PID = -1;
 
-    if(pcb->parent != NULL){
-    	struct task_struct *parent = pcb->parent;
-    	struct task_struct *pcb_parent = list_entry(parent, struct task_struct, parent->list);
-    	struct list_head *pos, *n;
-    	list_for_each_safe(pos,n,&pcb_parent->children){
-    		struct task_struct *child = list_entry(pos, struct task_struct, list);
-
-    		if(child->PID == pcb->PID){
-    			list_del(pos);
-    		}
-    	}
-    }
+    //if(pcb->parent != NULL){ NO FUNCIONA, lista de pcb_parent->children se corrompe (intento de acceder a un espacio de paginas incorrecto?)
+    //	struct task_struct *pcb_parent = pcb->parent;
+    //	//struct task_struct *pcb_parent = list_entry(parent, struct task_struct, parent->list);
+    //	struct list_head *pos, *n;
+	//	struct list_head *pos_del = NULL;
+    //	list_for_each_safe(pos,n,&pcb_parent->children){
+    //		struct task_struct *child = list_entry(pos, struct task_struct, list);
+//
+    //		if(child->PID == pcb->PID){
+    //			list_del(pos);
+	//			//break;
+    //		}
+    //	}
+	//	if(pos_del != NULL){
+	//		list_del(pos);
+	//	}
+    //}
 
     // Si el proceso tiene hijos, asignarles un nuevo padre (idle_task)
-    if (!list_empty(&pcb->children)) {
-        struct list_head *pos, *n;
-        list_for_each_safe(pos, n, &pcb->children) {
-            // Obtener el hijo del proceso
-            struct task_struct *child = list_entry(pos, struct task_struct, list);
-            
-            // Asignar a los hijos como hijos de idle_task
-            child->parent = idle_task;
-            
-            // Eliminar el hijo de la lista de hijos del proceso actual
-            list_del(pos);
-            
-            // Añadir el hijo a la lista de hijos de idle_task
-            list_add_tail(pos, &idle_task->children);
-        }
-    }
+    //if (!list_empty(&pcb->children)) {
+	//	struct list_head *pos, *n;
+	//	list_for_each_safe(pos, n, &pcb->children) {
+	//		// Obtener el hijo del proceso
+	//		struct task_struct *child = list_entry(pos, struct task_struct, list);
+	//		
+	//		// Asignar a los hijos como hijos de idle_task
+	//		child->parent = idle_task;
+	//		
+	//		// Eliminar el hijo de la lista de hijos del proceso actual
+	//		//list_del(pos);
+	//		
+	//		// Añadir el hijo a la lista de hijos de idle_task
+	//		list_add_tail(pos, &idle_task->children);
+	//	}
+    //}
+
+	//habria que limpiar la pcb a valoes por defecto??
 
     // Añadir el PCB a la lista de procesos libres
     list_add_tail(&(pcb->list), &freequeue);
@@ -278,8 +293,8 @@ int sys_gettime(){
 int sys_block(){
 	if(current()->pending_unblocks > 0) current()->pending_unblocks--;
 	else if (current()->pending_unblocks == 0){
-		current()->state = ST_BLOCKED;
 		update_process_state_rr(current(), &blocked);
+		current()->state = ST_BLOCKED;
 		sched_next_rr();
 	}
 	else return -1;
@@ -297,30 +312,28 @@ int sys_unblock(int PID) {
     // Verificar si el proceso actual tiene hijos
     struct list_head *pos;
     list_for_each(pos, &parent->children) {
-        struct task_struct *child = list_entry(pos, struct task_struct, children);
-		
+        struct task_struct *child = list_entry(pos, struct task_struct, list);
+        
         if (child->PID == PID) {
-
             if (child->state != ST_BLOCKED) {
                 child->pending_unblocks++;
+            } else {
+                // Eliminar el proceso hijo de la lista de bloqueados
+                list_del(&child->list);
+
+                // Cambiar el estado del hijo a listo (TASK_READY)
+                child->state = ST_READY;
+
+                // Añadir el proceso hijo a la lista de procesos listos
+                list_add_tail(&child->list, &readyqueue);
+				update_process_state_rr(&child, &readyqueue);
+				sched_next_rr();
             }
-			else{
-				// Eliminar el proceso hijo de la lista de bloqueados
-				list_del(&child->list);
-
-				// Cambiar el estado del hijo a listo (TASK_READY)
-				child->state = ST_READY;
-
-				// Añadir el proceso hijo a la lista de procesos listos
-				list_add_tail(&child->list, &readyqueue);
-			}
-            // Notificar al planificador
-            sched_next_rr();
-
             return 0; 
         }
     }
     return -1; 
 }
+
 
 

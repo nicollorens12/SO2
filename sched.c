@@ -144,6 +144,7 @@ void init_sched()
 
 	// READY
 	INIT_LIST_HEAD(&readyqueue);
+	INIT_LIST_HEAD(&blocked);
 }
 
 struct task_struct* current()
@@ -168,13 +169,17 @@ void inner_task_switch(union task_union *new){
 	set_esp(new->task.kernel_esp);
 }
 
+void change_process(){
+	update_process_state_rr(current(), &readyqueue);
+	current()->state = ST_READY;
+	sched_next_rr();
+}
+
 void schedule(){
 	if(quantum_ticks != NULL){
 		update_sched_data_rr();
 		if(needs_sched_rr()) {
-			current()->state = ST_READY;
-			update_process_state_rr(current(), &readyqueue);
-			sched_next_rr();
+			change_process();
 		}
 	}
 }
@@ -215,7 +220,7 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 	struct list_head * list_tmp = &t->list;
 	/* Si el proceso esta dentro de una lista, va a tener un puntero al elemento previo y siguiente
 	Así que solo comprobando esto podemos saber si es necesario eliminarlo de la lista dónde se encuentra*/
-	if(!(list_tmp->prev == NULL && list_tmp->next == NULL)){
+	if(t->state != ST_RUN){
 		list_del(list_tmp);
 	}
 

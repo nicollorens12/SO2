@@ -77,9 +77,9 @@ ENTRY(getpid)
 gp_return:
 	pop %ebp
 	add $4, %esp
-	pop %ebx
-	pop %esi
 	pop %edi
+	pop %esi
+	pop %ebx
 	cmp $0, %eax
 	jge gp_no_error
 	neg %eax

@@ -61,7 +61,7 @@ int __attribute__ ((__section__(".text.main")))
 	write(1, buff, strlen(buff));
 
 	char * mesg;
-	mesg = "Test Fork";
+	mesg = "Test Fork\n";
 	if(write(1, mesg, strlen(mesg)) == -1) perror();
 	int child = fork();
 
@@ -72,25 +72,30 @@ int __attribute__ ((__section__(".text.main")))
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
 	    mesg="\n";
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
-	    exit();
-	    mesg="Child exited with PID ";
+	    
+		//mesg="Blocking myself and I'm PID ";
+	    //if(write(1, mesg, strlen(mesg)) == -1) perror();
+	    //itoa(getpid(), mesg);
+	    //if(write(1, mesg, strlen(mesg)) == -1) perror();
+	    //mesg="\n";
+	    //if(write(1, mesg, strlen(mesg)) == -1) perror();
+		//block(child);
+  	}
+  	else{
+	    mesg="I am the FATHER and my PID is ";
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
 	    itoa(getpid(), mesg);
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
 	    mesg="\n";
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
-  	}
-  	else{
-	    mesg="I am the FATHER and my PID is ";
+
+	    exit();
+	    mesg="Parent exited with PID ";
 	    if(write(1, mesg, strlen(mesg)) == -1) perror();
-	    //itoa(getpid(), mesg);
-	    //if(write(1, mesg, strlen(mesg)) == -1) perror();
-	    //mesg="\n";
-	    //if(write(1, mesg, strlen(mesg)) == -1) perror();
-
-	    unblock(child);
-
-	    mesg="Child unblocked";
+	    itoa(getpid(), mesg);
+	    if(write(1, mesg, strlen(mesg)) == -1) perror();
+	    mesg="\n";
+	    if(write(1, mesg, strlen(mesg)) == -1) perror();
   	}
 
   while(1) { }
