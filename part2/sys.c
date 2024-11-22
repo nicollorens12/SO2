@@ -17,8 +17,13 @@
 
 #include <errno.h>
 
+#include <interrupt.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
+
+extern struct list_head blocked;
+
 
 void * get_ebp();
 
@@ -235,4 +240,21 @@ int sys_get_stats(int pid, struct stats *st)
     }
   }
   return -ESRCH; /*ESRCH */
+}
+
+
+int sys_getKey(char* b, int timeout){
+  if(timeout <= 0) return -1;
+
+  int start_time = sys_gettime();
+
+	update_process_state_rr(current(), &blocked);
+	current()->state = ST_BLOCKED;
+	sched_next_rr();
+
+  if(read_element_cb(&circular_buffer, b)) return 1;
+	
+  int end_time = sys_gettime();
+	return sys_getKey(b, (timeout*1000 - (end_time - start_time))/1000 );
+
 }

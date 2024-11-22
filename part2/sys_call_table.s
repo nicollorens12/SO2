@@ -44,7 +44,7 @@
  .long sys_ni_syscall
  .long sys_ni_syscall
  .long sys_ni_syscall
- .long sys_ni_syscall
+ .long sys_getKey
  .long sys_get_stats
 .globl MAX_SYSCALL
 MAX_SYSCALL = (. - sys_call_table)/4

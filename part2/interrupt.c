@@ -14,14 +14,47 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
+
+// Circular Buffer Definition
+void init_circular_buffer(struct CircularBuffer *cb){
+  cb->head = 0;
+  cb->tail = 0;
+  cb->chars_written = 0;
+}
+
+void add_element_cb(struct CircularBuffer *cb, char e){
+  cb->buffer[cb->tail] = e; 
+  cb->chars_written++;
+  if(cb->tail == sizeof(cb->buffer) - 1){
+    cb->tail = 0;
+  }
+  else cb->tail++;
+}
+
+char read_element_cb(struct CircularBuffer *cb, char *c){
+  if (cb->chars_written != 0){
+    *c = cb->buffer[cb->head];
+    if(cb->head == sizeof(cb->buffer) - 1){
+      cb->head = 0;
+    }
+    else cb->head++;
+    cb->chars_written--;
+    return 1;
+  }
+  return 0;
+  
+}
+
+struct CircularBuffer circular_buffer;
+
 char char_map[] =
 {
   '\0','\0','1','2','3','4','5','6',
-  '7','8','9','0','\'','¡','\0','\0',
+  '7','8','9','0','\'','ï¿½','\0','\0',
   'q','w','e','r','t','y','u','i',
   'o','p','`','+','\0','\0','a','s',
-  'd','f','g','h','j','k','l','ñ',
-  '\0','º','\0','ç','z','x','c','v',
+  'd','f','g','h','j','k','l','ï¿½',
+  '\0','ï¿½','\0','ï¿½','z','x','c','v',
   'b','n','m',',','.','-','\0','*',
   '\0','\0','\0','\0','\0','\0','\0','\0',
   '\0','\0','\0','\0','\0','\0','\0','7',
@@ -45,7 +78,10 @@ void keyboard_routine()
 {
   unsigned char c = inb(0x60);
   
-  if (c&0x80) printc_xy(0, 0, char_map[c&0x7f]);
+  if (c&0x80){
+    printc_xy(0, 0, char_map[c&0x7f]);
+    add_element_cb(&circular_buffer, char_map[c&0x7f]);
+  } 
 }
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
