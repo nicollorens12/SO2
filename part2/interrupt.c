@@ -15,6 +15,9 @@ Gate idt[IDT_ENTRIES];
 Register    idtR;
 
 
+extern struct list_head key_blockedqueue; //FIFO List mantain order of getKey call
+extern struct list_head getKeyBlocked;  //Ordered list by expring time
+
 // Circular Buffer Definition
 void init_circular_buffer(struct CircularBuffer *cb){
   cb->head = 0;
@@ -66,11 +69,38 @@ char char_map[] =
 
 int zeos_ticks = 0;
 
+void check_getKey_timeouts(){
+  struct task_struct *t;
+  int current_ticks = zeos_ticks;
+
+  if(!list_empty(&getKeyBlocked)){
+    
+    struct list_head* pos;
+    list_for_each(pos, &getKeyBlocked){
+      t = list_entry(&getKeyBlocked, struct task_struct, list);
+      if(t->expiring_time <= current_ticks){
+        list_del(&t->list);
+        //Hay que eliminar de la key_blockedqueue tambien
+        struct list_head* pos2;
+        list_for_each(pos2, &key_blockedqueue){
+          struct task_struct *task = list_entry(&key_blockedqueue, struct task_struct, list);
+          if(task->PID == t->PID){
+            list_del(&task->list);
+          }
+        }
+        update_process_state_rr(t, &readyqueue);
+      }
+
+    }
+    
+  }
+}
+
 void clock_routine()
 {
   zeos_show_clock();
   zeos_ticks ++;
-  
+  check_getKey_timeouts();
   schedule();
 }
 
@@ -81,6 +111,25 @@ void keyboard_routine()
   if (c&0x80){
     printc_xy(0, 0, char_map[c&0x7f]);
     add_element_cb(&circular_buffer, char_map[c&0x7f]);
+
+    if (!list_empty(&key_blockedqueue)) {
+            struct list_head *first = list_first(&key_blockedqueue);
+            struct list_head *firstKey = list_first(&getKeyBlocked);
+            
+            int pid = list_entry(first, struct task_struct, list)->PID;
+
+            list_del(first);
+
+            list_for_each_safe(firstKey, firstKey, &getKeyBlocked){
+              struct task_struct *task = list_entry(firstKey, struct task_struct, list);
+              if(task->PID == pid){
+                list_del(firstKey);
+                update_process_state_rr(task, &readyqueue);
+              }
+            }
+
+        }
+
   } 
 }
 

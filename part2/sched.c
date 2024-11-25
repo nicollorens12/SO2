@@ -20,6 +20,7 @@ union task_union protected_tasks[NR_TASKS+2]
 
 union task_union *task = &protected_tasks[1]; /* == union task_union task[NR_TASKS] */
 
+
 #if 0
 struct task_struct *list_head_to_task_struct(struct list_head *l)
 {
@@ -33,6 +34,10 @@ extern struct list_head blocked;
 struct list_head freequeue;
 // Ready queue
 struct list_head readyqueue;
+// Key Queue
+struct list_head  key_blockedqueue;
+
+struct list_head getKeyBlocked;
 
 void init_stats(struct stats *s)
 {
@@ -167,7 +172,8 @@ void init_idle (void)
   c->PID=0;
 
   c->total_quantum=DEFAULT_QUANTUM;
-
+  c->expiring_time = -1;
+  
   init_stats(&c->p_stats);
 
   allocate_DIR(c);
@@ -194,6 +200,7 @@ void init_task1(void)
   c->total_quantum=DEFAULT_QUANTUM;
 
   c->state=ST_RUN;
+  c->expiring_time = -1;
 
   remaining_quantum=c->total_quantum;
 
@@ -227,6 +234,9 @@ void init_sched()
 {
   init_freequeue();
   INIT_LIST_HEAD(&readyqueue);
+  INIT_LIST_HEAD(&blocked);
+  INIT_LIST_HEAD(&key_blockedqueue);
+  INIT_LIST_HEAD(&getKeyBlocked);
 }
 
 struct task_struct* current()

@@ -52,6 +52,24 @@ void list_add_tail(struct list_head *new, struct list_head *head)
 	__list_add(new, head->prev, head);
 }
 
+/**
+ *  list_add_ordered - add a new entry in order
+ *  @new: new entry to be added
+ *  @head: list head to add it before
+ *  @compare: function to compare two elements
+ *  
+ * 
+ */
+
+void list_add_ordered(struct list_head *new, struct list_head *head, int (*compare)(void *, void *))
+{
+	struct list_head *it = head->next;
+	while (it != head && compare(it, new) < 0) {
+		it = it->next;
+	}
+	__list_add(new, it->prev, it);
+}
+
 /*
  * Delete a list entry by making the prev/next entries
  * point to each other.
@@ -97,4 +115,3 @@ int list_empty(const struct list_head *head)
 {
 	return head->next == head;
 }
-
