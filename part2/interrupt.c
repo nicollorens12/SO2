@@ -70,25 +70,18 @@ char char_map[] =
 int zeos_ticks = 0;
 
 void check_getKey_timeouts(){
-  struct task_struct *t;
   int current_ticks = zeos_ticks;
 
   if(!list_empty(&getKeyBlocked)){
     
     struct list_head* pos;
     list_for_each(pos, &getKeyBlocked){
-      t = list_entry(&getKeyBlocked, struct task_struct, list);
-      if(t->expiring_time <= current_ticks){
-        list_del(&t->list);
+      struct task_struct *child = list_entry(&getKeyBlocked, struct task_struct, list);
+
+      if(child->expiring_time <= current_ticks){
+        list_del(&child->list_ordered);
         //Hay que eliminar de la key_blockedqueue tambien
-        struct list_head* pos2;
-        list_for_each(pos2, &key_blockedqueue){
-          struct task_struct *task = list_entry(&key_blockedqueue, struct task_struct, list);
-          if(task->PID == t->PID){
-            list_del(&task->list);
-          }
-        }
-        update_process_state_rr(t, &readyqueue);
+        update_process_state_rr(child, &readyqueue);
       }
 
     }
@@ -118,15 +111,14 @@ void keyboard_routine()
             
             int pid = list_entry(first, struct task_struct, list)->PID;
 
-            list_del(first);
-
             list_for_each_safe(firstKey, firstKey, &getKeyBlocked){
               struct task_struct *task = list_entry(firstKey, struct task_struct, list);
               if(task->PID == pid){
                 list_del(firstKey);
-                update_process_state_rr(task, &readyqueue);
+                
               }
             }
+            update_process_state_rr(task, &readyqueue);
 
         }
 

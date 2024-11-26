@@ -258,11 +258,11 @@ int sys_getKey(char* b, int timeout){
 
   int expiring_time = sys_gettime() + (timeout * 1000);
 
-	update_process_state_rr(current(), &blocked);
+	update_process_state_rr(current(), &key_blockedqueue);
 	current()->state = ST_BLOCKED;
   current()->expiring_time = expiring_time;
-  list_add_ordered(&current()->list, &getKeyBlocked, compare_expiring_time);
-  list_add_tail(&current()->list, &key_blockedqueue);
+  list_add_ordered(&current()->list_ordered, &getKeyBlocked, compare_expiring_time);
+  //list_add_tail(&current()->list, &key_blockedqueue);
 	sched_next_rr();
 
   read_element_cb(&circular_buffer,b);

@@ -20,6 +20,7 @@ struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;	/* Task struct enqueuing */
+  struct list_head list_ordered; /* Task struct enqueuing */
   int register_esp;		/* position in the stack */
   enum state_t state;		/* State of the process */
   int total_quantum;		/* Total quantum of the process */

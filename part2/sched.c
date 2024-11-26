@@ -114,6 +114,7 @@ int needs_sched_rr(void)
 
 void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
 {
+  int k = 0;
   if (t->state!=ST_RUN) list_del(&(t->list));
   if (dst_queue!=NULL)
   {

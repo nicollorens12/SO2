@@ -11,7 +11,7 @@ int __attribute__ ((__section__(".text.main")))
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
   int resp;
   char *b;
-  resp = getKey(b, 10);
+  resp = getKey(b, 3);
   char *buff;
 
   buff = "--Test getKey(): ";
