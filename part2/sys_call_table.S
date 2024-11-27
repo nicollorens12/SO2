@@ -27,7 +27,7 @@ ENTRY (sys_call_table)
 	.long sys_ni_syscall	//22
 	.long sys_ni_syscall	//23
 	.long sys_ni_syscall	//24
-	.long sys_ni_syscall	//25
+	.long sys_gotoXY	//25
 	.long sys_ni_syscall	//26
 	.long sys_ni_syscall	//27
 	.long sys_ni_syscall	//28

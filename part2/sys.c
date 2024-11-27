@@ -258,3 +258,13 @@ int sys_getKey(char* b, int timeout){
 	return sys_getKey(b, (timeout*1000 - (end_time - start_time))/1000 );
 
 }
+
+int sys_gotoXY(int x, int y)
+{
+  // Check x & y inside screen range
+
+  //move_cursor((char)x, (char)y);
+  move_cursor(4, 4);
+
+  return 1;
+}

@@ -63,3 +63,9 @@ void printk(char *string)
   for (i = 0; string[i]; i++)
     printc(string[i]);
 }
+
+void move_cursor(Byte mx, Byte my)
+{
+  x=mx;
+  y=my;
+}
