@@ -17,6 +17,7 @@ Register    idtR;
 
 extern struct list_head key_blockedqueue; //FIFO List mantain order of getKey call
 extern struct list_head getKeyBlocked;  //Ordered list by expring time
+extern int pending_key;
 
 // Circular Buffer Definition
 void init_circular_buffer(struct CircularBuffer *cb){
@@ -34,7 +35,7 @@ void add_element_cb(struct CircularBuffer *cb, char e){
   else cb->tail++;
 }
 
-char read_element_cb(struct CircularBuffer *cb, char *c){
+int read_element_cb(struct CircularBuffer *cb, char *c){
   if (cb->chars_written != 0){
     *c = cb->buffer[cb->head];
     if(cb->head == sizeof(cb->buffer) - 1){
@@ -78,18 +79,16 @@ char char_map[] =
 int zeos_ticks = 0;
 
 void check_getKey_timeouts(){
-  int current_ticks = zeos_ticks;
-
   if(!list_empty(&getKeyBlocked)){
     
-    struct list_head* pos,n;
+    struct list_head *pos, *n;
     list_for_each_safe(pos, n, &getKeyBlocked){
-      struct task_struct *child = list_entry(&getKeyBlocked, struct task_struct, list);
+      struct task_struct *task = list_entry(pos, struct task_struct, list_ordered);
 
-      if(child->expiring_time <= current_ticks){
-        list_del(&child->list_ordered);
+      if(task->expiring_time <= zeos_ticks){
+        list_del(&task->list_ordered);
         //Hay que eliminar de la key_blockedqueue tambien
-        update_process_state_rr(child, &readyqueue);
+        update_process_state_rr(&task, &readyqueue);
       }
       else break;
 
@@ -97,7 +96,7 @@ void check_getKey_timeouts(){
     
   }
 }
-
+ 
 void clock_routine()
 {
   zeos_show_clock();
@@ -116,12 +115,11 @@ void keyboard_routine()
 
     if (!list_empty(&key_blockedqueue)) {
             struct list_head *first = list_first(&key_blockedqueue);
-            struct list_head *firstKey = list_first(&getKeyBlocked);
             
             struct task_struct *task = list_entry(first, struct task_struct, list);
             list_del(&task->list_ordered);
             update_process_state_rr(task, &readyqueue);
-            pending_key++;
+            pending_key++; //quizas se puede quitar y usar directamente chars_written del cb
         }
 
   } 

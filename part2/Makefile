@@ -67,8 +67,8 @@ sys_call_table.s: sys_call_table.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 
 user.o:user.c $(INCLUDEDIR)/libc.h
 
-interrupt.o:interrupt.c $(INCLUDEDIR)/interrupt.h $(INCLUDEDIR)/segment.h $(INCLUDEDIR)/types.h
-	$(CC) $(CFLAGS1) -c -o $@ $<
+interrupt.o: interrupt.c $(INCLUDEDIR)/interrupt.h $(INCLUDEDIR)/segment.h $(INCLUDEDIR)/types.h
+	$(CC) $(CFLAGS0) -c $< -o $@
 
 io.o:io.c $(INCLUDEDIR)/io.h
 

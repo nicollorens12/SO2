@@ -1,5 +1,5 @@
 #include <list.h>
-
+#include <sched.h>
 /* 
  * Initializes an empty list.
  */
@@ -53,7 +53,7 @@ void list_add_tail(struct list_head *new, struct list_head *head)
 }
 
 /**
- *  list_add_ordered - add a new entry in order
+ *  list_add_ordered - add a new entry in order ONLY FOR PCB_LISTS
  *  @new: new entry to be added
  *  @head: list head to add it before
  *  @compare: function to compare two elements
@@ -64,10 +64,17 @@ void list_add_tail(struct list_head *new, struct list_head *head)
 void list_add_ordered(struct list_head *new, struct list_head *head, int (*compare)(void *, void *))
 {
 	struct list_head *it = head->next;
-	while (it != head && compare(it, new) < 0) {
-		it = it->next;
+
+	if(list_empty(head)){
+		list_add(new, head);
 	}
-	__list_add(new, it->prev, it);
+	else{
+		while (it != head && compare(it, new)) {
+		it = it->next;
+		}
+		__list_add(new, it->prev, it);
+	}
+	
 }
 
 /*
