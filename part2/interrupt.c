@@ -22,7 +22,7 @@ extern struct list_head getKeyBlocked;  //Ordered list by expring time
 void init_circular_buffer(struct CircularBuffer *cb){
   cb->head = 0;
   cb->tail = 0;
-  cb->chars_written = 0;
+  cb->chars_written = 0; 
 }
 
 void add_element_cb(struct CircularBuffer *cb, char e){
@@ -46,6 +46,14 @@ char read_element_cb(struct CircularBuffer *cb, char *c){
   }
   return 0;
   
+}
+
+int is_empty_cb(struct CircularBuffer *cb){
+  return cb->chars_written == 0;
+}
+
+int get_chars_pending_cb(struct CircularBuffer *cb){
+  return cb->chars_written;
 }
 
 struct CircularBuffer circular_buffer;
@@ -74,8 +82,8 @@ void check_getKey_timeouts(){
 
   if(!list_empty(&getKeyBlocked)){
     
-    struct list_head* pos;
-    list_for_each(pos, &getKeyBlocked){
+    struct list_head* pos,n;
+    list_for_each_safe(pos, n, &getKeyBlocked){
       struct task_struct *child = list_entry(&getKeyBlocked, struct task_struct, list);
 
       if(child->expiring_time <= current_ticks){
@@ -83,6 +91,7 @@ void check_getKey_timeouts(){
         //Hay que eliminar de la key_blockedqueue tambien
         update_process_state_rr(child, &readyqueue);
       }
+      else break;
 
     }
     
@@ -109,17 +118,10 @@ void keyboard_routine()
             struct list_head *first = list_first(&key_blockedqueue);
             struct list_head *firstKey = list_first(&getKeyBlocked);
             
-            int pid = list_entry(first, struct task_struct, list)->PID;
-
-            list_for_each_safe(firstKey, firstKey, &getKeyBlocked){
-              struct task_struct *task = list_entry(firstKey, struct task_struct, list);
-              if(task->PID == pid){
-                list_del(firstKey);
-                
-              }
-            }
+            struct task_struct *task = list_entry(first, struct task_struct, list);
+            list_del(&task->list_ordered);
             update_process_state_rr(task, &readyqueue);
-
+            pending_key++;
         }
 
   } 

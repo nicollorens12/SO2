@@ -25,6 +25,7 @@
 extern struct list_head blocked;
 extern struct list_head getKeyBlocked;
 extern struct list_head key_blockedqueue;
+extern int pending_key;
 
 void * get_ebp();
 
@@ -244,7 +245,7 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
-void compare_expiring_time(void *a, void *b)
+void compare_expiring_time(void *a, void  *b)
 {
   struct task_struct *t1 = (struct task_struct *)a;
   struct task_struct *t2 = (struct task_struct *)b;
@@ -255,16 +256,21 @@ void compare_expiring_time(void *a, void *b)
 
 int sys_getKey(char* b, int timeout){
   if(timeout <= 0) return -1;
-
+  if(list_empty(&key_blockedqueue)){ // Hay que comprobar, ya que si hay alguien bloqueado, 
+     if(get_chars_pending_cb(&circular_buffer) > pending_key){
+         read_element_cb(&circular_buffer,b);
+         --pending_key;
+     }
+  }
   int expiring_time = sys_gettime() + (timeout * 1000);
 
 	update_process_state_rr(current(), &key_blockedqueue);
 	current()->state = ST_BLOCKED;
   current()->expiring_time = expiring_time;
   list_add_ordered(&current()->list_ordered, &getKeyBlocked, compare_expiring_time);
-  //list_add_tail(&current()->list, &key_blockedqueue);
-	sched_next_rr();
+  list_add_tail(&current()->list, &key_blockedqueue);
 
+	sched_next_rr();
   read_element_cb(&circular_buffer,b);
   return 0;
 }

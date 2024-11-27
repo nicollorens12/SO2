@@ -39,6 +39,8 @@ struct list_head  key_blockedqueue;
 
 struct list_head getKeyBlocked;
 
+int pending_key = 0;
+
 void init_stats(struct stats *s)
 {
 	s->user_ticks = 0;

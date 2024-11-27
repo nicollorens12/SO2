@@ -1,132 +1,125 @@
-# 0 "user-utils.S"
-# 0 "<built-in>"
-# 0 "<command-line>"
-# 1 "/usr/include/stdc-predef.h" 1 3 4
-# 0 "<command-line>" 2
-# 1 "user-utils.S"
-# 1 "include/asm.h" 1
-# 2 "user-utils.S" 2
+#include <asm.h>
 
-.globl syscall_sysenter; .type syscall_sysenter, @function; .align 0; syscall_sysenter:
- push %ecx
- push %edx
- push $SYSENTER_RETURN
- push %ebp
- mov %esp, %ebp
- sysenter
-.globl SYSENTER_RETURN; .type SYSENTER_RETURN, @function; .align 0; SYSENTER_RETURN:
- pop %ebp
- pop %edx
- pop %edx
- pop %ecx
- ret
+ENTRY(syscall_sysenter)
+	push %ecx
+	push %edx
+	push $SYSENTER_RETURN
+	push %ebp
+	mov %esp, %ebp
+	sysenter
+ENTRY(SYSENTER_RETURN)
+	pop %ebp
+	pop %edx
+	pop %edx
+	pop %ecx
+	ret
 
+/* int write(int fd, char *buffer, int size) */
+ENTRY(write)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $4, %eax
+	movl 0x8(%ebp), %ebx;	//fd
+	movl 0xC(%ebp), %ecx;	//buffer
+	movl 0x10(%ebp), %edx;	//size
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
 
-.globl write; .type write, @function; .align 0; write:
- pushl %ebp
- movl %esp, %ebp
- pushl %ebx;
- movl $4, %eax
- movl 0x8(%ebp), %ebx;
- movl 0xC(%ebp), %ecx;
- movl 0x10(%ebp), %edx;
- call syscall_sysenter
- popl %ebx
- test %eax, %eax
- js nok
- popl %ebp
- ret
-
-
+/* Common code for negative return */
 nok:
- neg %eax
- mov %eax, errno
- mov $-1, %eax
- popl %ebp
- ret
+	neg %eax
+	mov %eax, errno
+	mov $-1, %eax
+	popl %ebp
+	ret
+
+/* int gettime() */
+ENTRY(gettime)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $10, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
+/* int getpid() */
+ENTRY(getpid)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $20, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
+/* int fork() */
+ENTRY(fork)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $2, %eax
+	call syscall_sysenter
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* void exit() */
+ENTRY(exit)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $1, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
+/* int yield() */
+ENTRY(yield)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $13, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
+/* int get_stats(int pid, struct stats *st) */
+ENTRY(get_stats)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $35, %eax
+	movl 0x8(%ebp), %ebx;	//pid
+	movl 0xC(%ebp), %ecx;	//st
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
 
 
-.globl gettime; .type gettime, @function; .align 0; gettime:
- pushl %ebp
- movl %esp, %ebp
- movl $10, %eax
- call syscall_sysenter
- popl %ebp
- ret
+/*int getKey(char* b, int timeout);*/
+ENTRY(getKey)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $34, %eax
+	movl 0x8(%ebp), %ebx;	//char *b
+	movl 0xC(%ebp), %ecx;	//int timeout
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
 
 
-.globl getpid; .type getpid, @function; .align 0; getpid:
- pushl %ebp
- movl %esp, %ebp
- movl $20, %eax
- call syscall_sysenter
- popl %ebp
- ret
-
-
-.globl fork; .type fork, @function; .align 0; fork:
- pushl %ebp
- movl %esp, %ebp
- movl $2, %eax
- call syscall_sysenter
- test %eax, %eax
- js nok
- popl %ebp
- ret
-
-
-.globl exit; .type exit, @function; .align 0; exit:
- pushl %ebp
- movl %esp, %ebp
- movl $1, %eax
- call syscall_sysenter
- popl %ebp
- ret
-
-
-.globl yield; .type yield, @function; .align 0; yield:
- pushl %ebp
- movl %esp, %ebp
- movl $13, %eax
- call syscall_sysenter
- popl %ebp
- ret
-
-
-.globl get_stats; .type get_stats, @function; .align 0; get_stats:
- pushl %ebp
- movl %esp, %ebp
- pushl %ebx;
- movl $35, %eax
- movl 0x8(%ebp), %ebx;
- movl 0xC(%ebp), %ecx;
- call syscall_sysenter
- popl %ebx
- test %eax, %eax
- js nok
- popl %ebp
- ret
-
-
-
-.globl getKey; .type getKey, @function; .align 0; getKey:
- pushl %ebp
- movl %esp, %ebp
- pushl %ebx;
- movl $34, %eax
- movl 0x8(%ebp), %ebx;
- movl 0xC(%ebp), %ecx;
- call syscall_sysenter
- popl %ebx
- test %eax, %eax
- js nok
- popl %ebp
- ret
-
-
-.globl SAVE_REGS; .type SAVE_REGS, @function; .align 0; SAVE_REGS:
+ENTRY(SAVE_REGS)
       pushl %eax
-      movl %eax, REGS
+      movl %eax, REGS    //SAVE EAX
       lea REGS, %eax
       movl %ebp, 4(%eax)
       movl %edi, 8(%eax)
@@ -137,13 +130,13 @@ nok:
       popl %eax
       ret
 
-.globl RESTORE_REGS; .type RESTORE_REGS, @function; .align 0; RESTORE_REGS:
-      lea REGS , %eax
-      movl 4(%eax) , %ebp
-      movl 8(%eax) , %edi
-      movl 12(%eax), %esi
-      movl 16(%eax), %edx
-      movl 20(%eax), %ecx
-      movl 24(%eax), %ebx
+ENTRY(RESTORE_REGS)
+      lea REGS  , %eax
+      movl 4(%eax) , %ebp 
+      movl 8(%eax) , %edi 
+      movl 12(%eax), %esi 
+      movl 16(%eax), %edx 
+      movl 20(%eax), %ecx 
+      movl 24(%eax), %ebx 
       movl (%eax), %eax
       ret
