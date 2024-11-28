@@ -35,7 +35,7 @@ void add_element_cb(struct CircularBuffer *cb, char e){
   else cb->tail++;
 }
 
-int read_element_cb(struct CircularBuffer *cb, char *c){
+char read_element_cb(struct CircularBuffer *cb, char *c){
   if (cb->chars_written != 0){
     *c = cb->buffer[cb->head];
     if(cb->head == sizeof(cb->buffer) - 1){
@@ -86,9 +86,10 @@ void check_getKey_timeouts(){
       struct task_struct *task = list_entry(pos, struct task_struct, list_ordered);
 
       if(task->expiring_time <= zeos_ticks){
+        task->expiring_time = -1;
         list_del(&task->list_ordered);
         //Hay que eliminar de la key_blockedqueue tambien
-        update_process_state_rr(&task, &readyqueue);
+        update_process_state_rr(task, &readyqueue);
       }
       else break;
 
@@ -110,7 +111,7 @@ void keyboard_routine()
   unsigned char c = inb(0x60);
   
   if (c&0x80){
-    printc_xy(0, 0, char_map[c&0x7f]);
+    //printc_xy(0, 0, char_map[c&0x7f]);
     add_element_cb(&circular_buffer, char_map[c&0x7f]);
 
     if (!list_empty(&key_blockedqueue)) {
