@@ -38,12 +38,17 @@ int __attribute__ ((__section__(".text.main")))
 
 
   gotoXY(4,4);
+  changeColor(0b001, 0b0010);
 
   buff = 'b';
   write(1, &buff, sizeof(buff));
 
   buff = 'c';
   write(1, &buff, sizeof(buff));
+
+  //char *matrix = NULL;
+  char *matrix;
+  clrscr(matrix);
 
   while(1) { }
 }

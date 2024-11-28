@@ -261,10 +261,50 @@ int sys_getKey(char* b, int timeout){
 
 int sys_gotoXY(int x, int y)
 {
-  // Check x & y inside screen range
+  // Check x & y inside screen range (25,80)
+  // if (x < 0 || x > 25 || y < 0 || y > 80)
 
   //move_cursor((char)x, (char)y);
   move_cursor(4, 4);
+
+  return 1;
+}
+
+int sys_changeColor(int fg, int bg)
+{
+  // Els colors suposos que han de ser en format binari (com al manual) i no uns codis self-defined
+  // Que hem de comprobar, que els colors son valids??
+  // Rang: (000 -> 111 per bg), (0000 -> 1111 per fg)
+
+  change_color(fg, bg);
+  return 1;
+}
+
+int sys_clrscr(char* b)
+{
+  // Gestio errors
+
+
+  for (int i = 0; i < 25; ++i)
+  {
+    for (int j = 0; j < 80; ++j)
+    {
+      char c = ' ';
+      char fg = 0;
+      char bg = 0;
+
+      if (b != NULL)
+      {
+        //c = b[i][j];
+        //fg = b[i][j];
+        //bg = b[i][j];
+      }
+
+      change_color(fg, bg);
+      printc(c);
+
+    }
+  }
 
   return 1;
 }

@@ -131,6 +131,35 @@ ENTRY(gotoXY)
 	popl %ebp
 	ret
 
+/* int changeColor(int fg, int bg) */
+ENTRY(changeColor)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $26, %eax
+	movl 0x8(%ebp), %ebx;	//int fg
+	movl 0xC(%ebp), %ecx;	//int bg
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int clrscr(char* b) */
+ENTRY(clrscr)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $27, %eax
+	movl 0x8(%ebp), %ebx;	//char* b
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
 ENTRY(SAVE_REGS)
       pushl %eax
       movl %eax, REGS    //SAVE EAX
