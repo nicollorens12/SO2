@@ -256,25 +256,27 @@ int compare_expiring_time(void *a, void  *b)
 
 int sys_getKey(char* b, int timeout){
   if(timeout <= 0) return 1;
-  if(list_empty(&key_blockedqueue) && get_chars_pending_cb(&circular_buffer) > pending_key){ // Hay que comprobar, ya que si hay alguien bloqueado, 
-      read_element_cb(&circular_buffer,b);
-      --pending_key;
-     
+  if(list_empty(&key_blockedqueue)){ // Hay que comprobar, ya que si hay alguien bloqueado, 
+      if(pending_key == 0){
+          if(get_chars_pending_cb(&circular_buffer) > 0){
+              read_element_cb(&circular_buffer,b);
+              return 0;
+          }
+      }
+      
   }
-  else{
     int expiring_time = sys_gettime() + (timeout * 1000); //Nunca podra ser negativo
-
     update_process_state_rr(current(), &key_blockedqueue);
     current()->state = ST_BLOCKED;
     current()->expiring_time = expiring_time;
-    list_add_ordered(&current()->list_ordered, &getKeyBlocked, &compare_expiring_time);
-    list_add_tail(&current()->list, &key_blockedqueue);
+    list_add_ordered(&current()->list_ordered, &getKeyBlocked);
 
     sched_next_rr();
-    if(current()->expiring_time == -1) return -1;
-    if(read_element_cb(&circular_buffer,b)) return 0;
 
-  }
+    if(current()->expiring_time == -1) return -1;
+    read_element_cb(&circular_buffer,b);
+    --pending_key;
+  
   
   return 1;
 }

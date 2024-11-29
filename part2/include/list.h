@@ -83,7 +83,7 @@ void list_add_tail(struct list_head *new, struct list_head *head);
  *  
  * 
  */
-void list_add_ordered(struct list_head *new, struct list_head *head, int (*compare)(void *, void *));
+void list_add_ordered(struct list_head *new, struct list_head *head);
 
 /**
  * list_del - deletes entry from list.

@@ -123,7 +123,8 @@ void keyboard_routine()
             pending_key++; //quizas se puede quitar y usar directamente chars_written del cb
         }
 
-  } 
+  }
+  
 }
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)

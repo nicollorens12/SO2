@@ -61,7 +61,7 @@ void list_add_tail(struct list_head *new, struct list_head *head)
  * 
  */
 
-void list_add_ordered(struct list_head *new, struct list_head *head, int (*compare)(void *, void *))
+void list_add_ordered(struct list_head *new, struct list_head *head)
 {
 	if(list_empty(head)){
 		list_add(new, head);
@@ -69,11 +69,15 @@ void list_add_ordered(struct list_head *new, struct list_head *head, int (*compa
 	else{
 		struct list_head *pos, *n;
 		list_for_each_safe(pos, n, head){
-			if(compare(pos, new)){
+			struct task_struct *task_new = list_entry(new, struct task_struct, list_ordered);
+			struct task_struct *task_on_list = list_entry(pos, struct task_struct, list_ordered);
+			if(task_new->expiring_time <= task_on_list->expiring_time){
 				__list_add(new, pos->prev, pos);
 				return;
 			}
+			
 		}
+		list_add_tail(new, head);
 	}
 	
 }

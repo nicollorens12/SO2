@@ -20,7 +20,7 @@ int __attribute__ ((__section__(".text.main")))
     buff = "Child process\n";
     write(1,buff,strlen(buff));
 
-    resp = getKey(&b, 6);
+    resp = getKey(&b, 2);
 
     buff = "--Test getKey() Child: ";
     write(1,buff,strlen(buff));
@@ -38,10 +38,11 @@ int __attribute__ ((__section__(".text.main")))
     buff = "Parent process\n";
     write(1,buff,strlen(buff));
 
-    resp = getKey(&b, 3);
+    resp = getKey(&b, 1);
 
     buff = "--Test getKey() Parent: ";
     write(1,buff,strlen(buff));
+    buff = "";
     if(resp < 0){
       buff = "Timed out!";
     }
