@@ -262,12 +262,12 @@ int sys_getKey(char* b, int timeout){
 int sys_gotoXY(int x, int y)
 {
   // Check x & y inside screen range (25,80)
-  // if (x < 0 || x > 25 || y < 0 || y > 80)
+  if (x < 0 || x > 25 || y < 0 || y > 80)
+    return -EINVAL; /* Invalid argument */
 
-  //move_cursor((char)x, (char)y);
-  move_cursor(4, 4);
+  move_cursor((char)x, (char)y);
 
-  return 1;
+  return 0;
 }
 
 int sys_changeColor(int fg, int bg)
