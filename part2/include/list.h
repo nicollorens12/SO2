@@ -76,6 +76,16 @@ void list_add(struct list_head *new, struct list_head *head);
 void list_add_tail(struct list_head *new, struct list_head *head);
 
 /**
+ * list_add_ordered - add a new entry in order
+ * @new: new entry to be added
+ * @head: list head to add it before
+ * @compare: function to compare two elements
+ *  
+ * 
+ */
+void list_add_ordered(struct list_head *new, struct list_head *head);
+
+/**
  * list_del - deletes entry from list.
  * @entry: the element to delete from the list.
  * Note: list_empty() on entry does not return true after this, the entry is
@@ -123,6 +133,7 @@ int list_empty(const struct list_head *head);
 #define list_for_each_safe(pos, n, head) \
         for (pos = (head)->next, n = pos->next; pos != (head); \
                 pos = n, n = pos->next)
+
 
 /**
  * list_first   -   returns the first list item

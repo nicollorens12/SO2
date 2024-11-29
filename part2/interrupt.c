@@ -15,11 +15,15 @@ Gate idt[IDT_ENTRIES];
 Register    idtR;
 
 
+extern struct list_head key_blockedqueue; //FIFO List mantain order of getKey call
+extern struct list_head getKeyBlocked;  //Ordered list by expring time
+extern int pending_key;
+
 // Circular Buffer Definition
 void init_circular_buffer(struct CircularBuffer *cb){
   cb->head = 0;
   cb->tail = 0;
-  cb->chars_written = 0;
+  cb->chars_written = 0; 
 }
 
 void add_element_cb(struct CircularBuffer *cb, char e){
@@ -45,6 +49,14 @@ char read_element_cb(struct CircularBuffer *cb, char *c){
   
 }
 
+int is_empty_cb(struct CircularBuffer *cb){
+  return cb->chars_written == 0;
+}
+
+int get_chars_pending_cb(struct CircularBuffer *cb){
+  return cb->chars_written;
+}
+
 struct CircularBuffer circular_buffer;
 
 char char_map[] =
@@ -66,11 +78,31 @@ char char_map[] =
 
 int zeos_ticks = 0;
 
+void check_getKey_timeouts(){
+  if(!list_empty(&getKeyBlocked)){
+    
+    struct list_head *pos, *n;
+    list_for_each_safe(pos, n, &getKeyBlocked){
+      struct task_struct *task = list_entry(pos, struct task_struct, list_ordered);
+
+      if(task->expiring_time <= zeos_ticks){
+        task->expiring_time = -1;
+        list_del(&task->list_ordered);
+        //Hay que eliminar de la key_blockedqueue tambien
+        update_process_state_rr(task, &readyqueue);
+      }
+      else break;
+
+    }
+    
+  }
+}
+ 
 void clock_routine()
 {
   zeos_show_clock();
   zeos_ticks ++;
-  
+  check_getKey_timeouts();
   schedule();
 }
 
@@ -79,9 +111,20 @@ void keyboard_routine()
   unsigned char c = inb(0x60);
   
   if (c&0x80){
-    printc_xy(0, 0, char_map[c&0x7f]);
+    //printc_xy(0, 0, char_map[c&0x7f]);
     add_element_cb(&circular_buffer, char_map[c&0x7f]);
-  } 
+
+    if (!list_empty(&key_blockedqueue)) {
+            struct list_head *first = list_first(&key_blockedqueue);
+            
+            struct task_struct *task = list_entry(first, struct task_struct, list);
+            list_del(&task->list_ordered);
+            update_process_state_rr(task, &readyqueue);
+            pending_key++; //quizas se puede quitar y usar directamente chars_written del cb
+        }
+
+  }
+  
 }
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)

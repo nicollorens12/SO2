@@ -1,5 +1,5 @@
 #include <list.h>
-
+#include <sched.h>
 /* 
  * Initializes an empty list.
  */
@@ -52,6 +52,36 @@ void list_add_tail(struct list_head *new, struct list_head *head)
 	__list_add(new, head->prev, head);
 }
 
+/**
+ *  list_add_ordered - add a new entry in order ONLY FOR PCB_LISTS
+ *  @new: new entry to be added
+ *  @head: list head to add it before
+ *  @compare: function to compare two elements
+ *  
+ * 
+ */
+
+void list_add_ordered(struct list_head *new, struct list_head *head)
+{
+	if(list_empty(head)){
+		list_add(new, head);
+	}
+	else{
+		struct list_head *pos, *n;
+		list_for_each_safe(pos, n, head){
+			struct task_struct *task_new = list_entry(new, struct task_struct, list_ordered);
+			struct task_struct *task_on_list = list_entry(pos, struct task_struct, list_ordered);
+			if(task_new->expiring_time <= task_on_list->expiring_time){
+				__list_add(new, pos->prev, pos);
+				return;
+			}
+			
+		}
+		list_add_tail(new, head);
+	}
+	
+}
+
 /*
  * Delete a list entry by making the prev/next entries
  * point to each other.
@@ -97,4 +127,3 @@ int list_empty(const struct list_head *head)
 {
 	return head->next == head;
 }
-
