@@ -63,16 +63,17 @@ void list_add_tail(struct list_head *new, struct list_head *head)
 
 void list_add_ordered(struct list_head *new, struct list_head *head, int (*compare)(void *, void *))
 {
-	struct list_head *it = head->next;
-
 	if(list_empty(head)){
 		list_add(new, head);
 	}
 	else{
-		while (it != head && compare(it, new)) {
-		it = it->next;
+		struct list_head *pos, *n;
+		list_for_each_safe(pos, n, head){
+			if(compare(pos, new)){
+				__list_add(new, pos->prev, pos);
+				return;
+			}
 		}
-		__list_add(new, it->prev, it);
 	}
 	
 }
