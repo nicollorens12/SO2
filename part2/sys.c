@@ -23,7 +23,9 @@
 #define ESCRIPTURA 1
 
 extern struct list_head blocked;
-
+extern struct list_head getKeyBlocked;
+extern struct list_head key_blockedqueue;
+extern int pending_key;
 
 void * get_ebp();
 
@@ -130,6 +132,7 @@ int sys_fork(void)
 
   uchild->task.PID=++global_PID;
   uchild->task.state=ST_READY;
+  uchild->task.expiring_time = -1;
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -242,21 +245,40 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
+int compare_expiring_time(void *a, void  *b)
+{
+  struct task_struct *t1 = (struct task_struct *)a;
+  struct task_struct *t2 = (struct task_struct *)b;
+
+  return t1->expiring_time < t2->expiring_time;
+}
+
 
 int sys_getKey(char* b, int timeout){
-  if(timeout <= 0) return -1;
+  if(timeout <= 0) return 1;
+  if(list_empty(&key_blockedqueue)){ // Hay que comprobar, ya que si hay alguien bloqueado, 
+      if(pending_key == 0){
+          if(get_chars_pending_cb(&circular_buffer) > 0){
+              read_element_cb(&circular_buffer,b);
+              return 0;
+          }
+      }
+      
+  }
+    int expiring_time = sys_gettime() + (timeout * 1000); //Nunca podra ser negativo
+    update_process_state_rr(current(), &key_blockedqueue);
+    current()->state = ST_BLOCKED;
+    current()->expiring_time = expiring_time;
+    list_add_ordered(&current()->list_ordered, &getKeyBlocked);
 
-  int start_time = sys_gettime();
+    sched_next_rr();
 
-	update_process_state_rr(current(), &blocked);
-	current()->state = ST_BLOCKED;
-	sched_next_rr();
-
-  if(read_element_cb(&circular_buffer, b)) return 1;
-	
-  int end_time = sys_gettime();
-	return sys_getKey(b, (timeout*1000 - (end_time - start_time))/1000 );
-
+    if(current()->expiring_time == -1) return -1;
+    read_element_cb(&circular_buffer,b);
+    --pending_key;
+  
+  
+  return 1;
 }
 
 int sys_gotoXY(int x, int y)
