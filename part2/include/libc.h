@@ -28,11 +28,15 @@ int yield();
 
 int get_stats(int pid, struct stats *st);
 
+int sys_getKey(char* b, int timeout);
+
 int gotoXY(int x, int y);
 
 int changeColor(int fg, int bg);
 
 int clrscr(char* b);
+
+int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* parameter );
 
 void SAVE_REGS(void);
 void RESTORE_REGS(void);

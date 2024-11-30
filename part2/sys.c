@@ -25,6 +25,8 @@
 extern struct list_head blocked;
 extern struct list_head getKeyBlocked;
 extern struct list_head key_blockedqueue;
+extern struct list_head threads;
+
 extern int pending_key;
 
 void * get_ebp();
@@ -57,6 +59,7 @@ int sys_getpid()
 }
 
 int global_PID=1000;
+int global_TID=0;
 
 int ret_from_fork()
 {
@@ -326,3 +329,131 @@ int sys_clrscr(char* b)
 
   return 1;
 }
+
+void thread_exit() {
+    struct task_struct *current_thread = current();
+
+    // Liberar el stack del usuario
+    for (int i = 0; i < current_thread->num_stack_pages; i++) {
+        unsigned long page = (unsigned long)current_thread->user_stack_base + i * PAGE_SIZE;
+        free_frame(get_frame(get_PT(current_thread), page));
+        del_ss_pag(get_PT(current_thread), page);
+    }
+
+    current_thread->user_stack_base = NULL;
+    current_thread->num_stack_pages = 0;
+
+    schedule();  // Cambiar al siguiente thread
+}
+
+
+struct task_struct *allocate_task_struct(union task_union **task)
+{
+  struct list_head *lh = list_first(&freequeue);  // Obtenemos la primera tarea libre
+  if (lh == NULL) {
+    return NULL;  // No hay más tareas disponibles
+  }
+
+  list_del(lh);  // La eliminamos de la lista de tareas libres
+  *task = (union task_union*)list_head_to_task_struct(lh);  // Convertimos la lista a un task_struct
+  return &(*task)->task;
+}
+
+void* allocate_user_stack(int N) {
+    page_table_entry *process_pt = get_PT(current());
+
+    struct list_head *lt = list_tail(&threads);
+    union task_union *last_thread = list_head_to_task_struct(lt);
+    int *last_thread_stack = last_thread->task.user_stack_base;
+
+    int base_pag = last_thread_stack >> 12;
+
+    for(int i = 0; i < N; ++i){
+        int new_ph_pag = alloc_frame();
+        if(new_ph_pag != -1){
+            set_ss_pag(process_pt, last_thread_stack+i , new_ph_pag);
+        } 
+        else {
+            for(int j = 0; j < i; ++j){
+                free_frame(get_frame(process_pt, USER_STACK_BASE_PAGES - j - 1));
+                del_ss_pag(process_pt, USER_STACK_BASE_PAGES - j - 1);
+            }
+            return NULL;
+        }
+    }
+}
+
+void free_task_struct(union task_union *task)
+{
+  struct list_head *lh = &task->task.list;
+  list_add_tail(lh, &freequeue);  // Añadimos la tarea de vuelta a la lista de tareas libres
+}
+
+void copy_tcb(union task_union *new){
+    union task_union *father = (union task_union *)current();
+    new->task.register_esp = father->task.register_esp;
+    new->task.dir_pages_baseAddr = father->task.dir_pages_baseAddr;
+    new->task.total_quantum = father->task.total_quantum;
+    new->task.state = father->task.state;
+    new->task.expiring_time = father->task.expiring_time;
+    new->task.PID = father->task.PID;
+    new->task.user_stack_base = father->task.user_stack_base;
+    new->task.num_stack_pages = father->task.num_stack_pages;
+    new->task.user_esp = father->task.user_esp;
+    new->task.p_stats.remaining_ticks = father->task.p_stats.remaining_ticks;
+    new->task.p_stats.elapsed_total_ticks = father->task.p_stats.elapsed_total_ticks;
+    new->task.p_stats.user_ticks = father->task.p_stats.user_ticks;
+    new->task.p_stats.system_ticks = father->task.p_stats.system_ticks;
+    new->task.p_stats.blocked_ticks = father->task.p_stats.blocked_ticks;
+    new->task.p_stats.ready_ticks = father->task.p_stats.ready_ticks;
+    new->task.p_stats.elapsed_total_ticks = father->task.p_stats.elapsed_total_ticks;
+}
+
+
+int sys_threadCreateWithStack(void (*start_routine)(void), int N, void *argument ) {
+    
+    struct list_head *lhcurrent = NULL;
+    union task_union *new_thread;
+    
+    /* Any free task_struct? */
+    if (list_empty(&freequeue)) return -ENOMEM;
+
+    lhcurrent=list_first(&freequeue);
+    
+    list_del(lhcurrent);
+    
+    new_thread=(union task_union*)list_head_to_task_struct(lhcurrent);
+
+    copy_tcb(new_thread);
+
+    if (!new_thread) return -ENOMEM;
+
+    // Asignar el stack para el hilo
+    void *stack_base = allocate_user_stack(N);
+    if (!stack_base) {
+        free_task_struct(new_thread); // Liberar la estructura si no se pudo asignar el stack
+        return -ENOMEM; // Error al asignar el stack
+    }
+
+    // Ajustar TCB
+    new_thread->user_stack_base = stack_base;
+    new_thread->num_stack_pages = N;
+    new_thread->user_esp = (unsigned int)(stack_base + (N * PAGE_SIZE) - 16); // Ajustar el puntero ESP
+    new_thread->TID = global_TID++;
+
+    // Inicializar el stack con los valores de retorno para la ejecución del hilo
+    unsigned int *stack_top = (unsigned int *)new_thread->user_esp;
+    //*(--stack_top) = (unsigned int)thread_exit;        // Dirección de la función de salida del hilo
+    *(--stack_top) = (unsigned int)argument;               // Argumento que se pasa al hilo
+    *(--stack_top) = (unsigned int)start_routine;     // Dirección de la función que ejecutará el hilo
+
+    // Actualizar el puntero ESP del hilo
+    new_thread->user_esp = (unsigned int)stack_top;
+
+    list_add_tail(&new_thread->list_thread, &threads);
+
+    return new_thread->TID;  // Retornar el ID del hilo creado
+}
+
+
+

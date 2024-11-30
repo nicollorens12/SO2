@@ -29,7 +29,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 #endif
 
 extern struct list_head blocked;
-
+extern int global_TID;
 // Free task structs
 struct list_head freequeue;
 // Ready queue
@@ -38,6 +38,8 @@ struct list_head readyqueue;
 struct list_head  key_blockedqueue;
 
 struct list_head getKeyBlocked;
+
+struct list_head threads;
 
 int pending_key = 0;
 
@@ -193,31 +195,40 @@ void setMSR(unsigned long msr_number, unsigned long high, unsigned long low);
 
 void init_task1(void)
 {
+  // Obtener una entrada de la freequeue
   struct list_head *l = list_first(&freequeue);
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   union task_union *uc = (union task_union*)c;
 
-  c->PID=1;
+  INIT_LIST_HEAD(&threads);
 
-  c->total_quantum=DEFAULT_QUANTUM;
-
-  c->state=ST_RUN;
+  // Inicializar atributos del proceso/primer thread
+  c->PID = 1;  // PID del proceso init
+  c->TID = global_TID++;  // TID del thread
+  c->total_quantum = DEFAULT_QUANTUM;
+  c->state = ST_RUN;  // El thread inicial comienza en ejecución
   c->expiring_time = -1;
 
-  remaining_quantum=c->total_quantum;
+  remaining_quantum = c->total_quantum;  // Configurar el quantum restante
+  init_stats(&c->p_stats);              // Inicializar estadísticas
 
-  init_stats(&c->p_stats);
+  // Asignar directorio de páginas y configurar memoria
+  allocate_DIR(c);  // Asignar tabla de páginas
+  set_user_pages(c);  // Configurar páginas de usuario para init
 
-  allocate_DIR(c);
-
-  set_user_pages(c);
-
+  // Configurar stack del kernel
   tss.esp0=(DWord)&(uc->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
-  set_cr3(c->dir_pages_baseAddr);
+  // Configurar stack de usuario y registro CR3
+  c->user_stack_base = USER_ESP;  // Dirección base del stack de usuario
+  c->user_esp = USER_ESP - 16;    // Espacio inicial para argumentos
+  c->num_stack_pages = 1;         // Número de páginas del stack de usuario
+  list_add_tail(&c->list_thread, &threads);  
+  set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
+
 
 void init_freequeue()
 {

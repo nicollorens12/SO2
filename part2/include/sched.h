@@ -18,6 +18,7 @@ enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
+  int TID;      /* Thread ID */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;	/* Task struct enqueuing */
   struct list_head list_ordered; /* Task struct for ordered list */
@@ -26,6 +27,13 @@ struct task_struct {
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
   int expiring_time;
+
+  /* Nuevo para threads */
+  int *user_stack_base;       /* Dirección base del stack del usuario */
+  int num_stack_pages;         /* Número de páginas del stack dinámico */
+  unsigned int user_esp;       /* User stack pointer */
+  struct list_head list_thread;  /* Lista de threads del proceso */
+
 };
 
 union task_union {

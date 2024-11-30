@@ -142,4 +142,11 @@ int list_empty(const struct list_head *head);
 #define list_first(head)                \
          (head)->next
 
+/**
+ * list_last   -   returns the last list item
+ * @head:   the head for your list.
+ */
+#define list_last(head)                 \
+         (head)->prev
+
 #endif /* _LINUX_LIST_H */
