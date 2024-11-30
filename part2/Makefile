@@ -32,7 +32,7 @@ SYSOBJ = interrupt.o entry.o sys_call_table.o io.o sched.o sys.o mm.o devices.o 
 LIBZEOS = -L . -l zeos -l auxjp
 
 #add to USROBJ the object files required to complete the user program
-USROBJ = libc.o user-utils.o # libjp.a
+USROBJ = libc.o user-utils.o dangerous_dave.o # libjp.a
 
 all:zeos.bin
 
@@ -75,6 +75,8 @@ io.o:io.c $(INCLUDEDIR)/io.h
 sched.o:sched.c $(INCLUDEDIR)/sched.h
 
 libc.o:libc.c $(INCLUDEDIR)/libc.h
+
+dangerous_dave.o:dangerous_dave.c $(INCLUDEDIR)/dangerous_dave.h
 
 mm.o:mm.c $(INCLUDEDIR)/types.h $(INCLUDEDIR)/mm.h
 

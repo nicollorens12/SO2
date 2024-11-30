@@ -15,6 +15,9 @@
 
 Byte x, y=19;
 
+Byte fg = 0b1110;
+Byte bg = 4;
+
 /* Read a byte from 'port' */
 Byte inb (unsigned short port)
 {
@@ -34,7 +37,10 @@ void printc(char c)
   }
   else
   {
-    Word ch = (Word) (c & 0x00FF) | 0x0200;
+    //Word ch = (Word) (c & 0x00FF) | 0x0200;
+    // Aplicar desplazamiento para que parte baja de `color` coincida y aplicar la mascara
+    Word ch = (Word) (c & 0x00FF) | (fg << 8 & 0x0F00) | (bg << 12 & 0xF000); 
+    
 	Word *screen = (Word *)0xb8000;
 	screen[(y * NUM_COLUMNS + x)] = ch;
     if (++x >= NUM_COLUMNS)
@@ -42,6 +48,20 @@ void printc(char c)
       x = 0;
       y=(y+1)%NUM_ROWS;
     }
+  }
+}
+
+void printc_raw(Word w)
+{
+  //Word ch = (Word) (c & 0x00FF) | 0x0200;
+  // Aplicar desplazamiento para que parte baja de `color` coincida y aplicar la mascara
+    
+  Word *screen = (Word *)0xb8000;
+  screen[(y * NUM_COLUMNS + x)] = w;
+  if (++x >= NUM_COLUMNS)
+  {
+    x = 0;
+    y=(y+1)%NUM_ROWS;
   }
 }
 
@@ -62,4 +82,16 @@ void printk(char *string)
   int i;
   for (i = 0; string[i]; i++)
     printc(string[i]);
+}
+
+void move_cursor(Byte mx, Byte my)
+{
+  x=mx;
+  y=my;
+}
+
+void change_color(Byte new_fg, Byte new_bg)
+{
+  fg = new_fg;
+  bg = new_bg;
 }

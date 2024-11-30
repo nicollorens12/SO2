@@ -28,6 +28,12 @@ int yield();
 
 int get_stats(int pid, struct stats *st);
 
+int gotoXY(int x, int y);
+
+int changeColor(int fg, int bg);
+
+int clrscr(char* b);
+
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
 

@@ -135,5 +135,9 @@
 #define EKEYREVOKED 128 /* Key has been revoked */
 #define EKEYREJECTED    129 /* Key was rejected by service */
 
+/* Screen syscall errors */
+#define ESCRXY 130 /* Index de x o y fora de pantalla */
+#define ESCRCOLOR 131 /* Color no valid */
+
 #endif
 

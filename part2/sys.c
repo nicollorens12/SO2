@@ -280,3 +280,49 @@ int sys_getKey(char* b, int timeout){
   
   return 1;
 }
+
+int sys_gotoXY(int x, int y)
+{
+  // Check x & y inside screen range (80,25)
+  if (x < 0 || x > 80 || y < 0 || y > 25)
+    return -ESCRXY; /* Invalid argument */
+
+  move_cursor((char)x, (char)y);
+
+  return 0;
+}
+
+int sys_changeColor(int fg, int bg)
+{
+  // Rang: (000 -> 111 per bg), (0000 -> 1111 per fg)
+  if (fg < 0b0000 || fg > 0b1111 || bg < 0b000 || bg > 0b111)
+    return -ESCRCOLOR; /* Invalid argument */
+
+  change_color(fg, bg);
+  return 0;
+}
+
+int sys_clrscr(char* b)
+{
+  // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
+  if ( b < L_USER_START || (b + sizeof(b)) > USER_ESP)
+    return EFAULT;  /* Bad address */
+
+  // Moure el cursor a l'inici de la pantalla
+  move_cursor(0, 0);
+
+  for (int i = 0; i < 25; ++i)
+  {
+    for (int j = 0; j < 80; ++j)
+    {
+      if (b != NULL)
+        // Suposant que la matriu es guarda per files: desplacament de fila + access columna
+        // Part alta: color; Part baixa: char
+        printc_raw(b[i*80*2 + j*2 + 1] << 8 | b[i*80*2 + j*2 + 0]); 
+      else 
+        printc_raw(0);
+    }
+  }
+
+  return 1;
+}
