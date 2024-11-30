@@ -261,9 +261,9 @@ int sys_getKey(char* b, int timeout){
 
 int sys_gotoXY(int x, int y)
 {
-  // Check x & y inside screen range (25,80)
-  if (x < 0 || x > 25 || y < 0 || y > 80)
-    return -EINVAL; /* Invalid argument */
+  // Check x & y inside screen range (80,25)
+  if (x < 0 || x > 80 || y < 0 || y > 25)
+    return -ESCRXY; /* Invalid argument */
 
   move_cursor((char)x, (char)y);
 
@@ -274,7 +274,7 @@ int sys_changeColor(int fg, int bg)
 {
   // Rang: (000 -> 111 per bg), (0000 -> 1111 per fg)
   if (fg < 0b0000 || fg > 0b1111 || bg < 0b000 || bg > 0b111)
-    return -EINVAL; /* Invalid argument */
+    return -ESCRCOLOR; /* Invalid argument */
 
   change_color(fg, bg);
   return 0;
@@ -283,7 +283,7 @@ int sys_changeColor(int fg, int bg)
 int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
-  //if (false)
+  //if ( (unsigned int)b % PAGE_SIZE != 0)
   //  return EFAULT;  /* Bad address */
 
   // Moure el cursor a l'inici de la pantalla
