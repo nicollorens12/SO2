@@ -283,8 +283,8 @@ int sys_changeColor(int fg, int bg)
 int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
-  //if ( (unsigned int)b % PAGE_SIZE != 0)
-  //  return EFAULT;  /* Bad address */
+  if ( b < L_USER_START || (b + sizeof(b)) > USER_ESP)
+    return EFAULT;  /* Bad address */
 
   // Moure el cursor a l'inici de la pantalla
   move_cursor(0, 0);
