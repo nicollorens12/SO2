@@ -272,37 +272,33 @@ int sys_gotoXY(int x, int y)
 
 int sys_changeColor(int fg, int bg)
 {
-  // Els colors suposos que han de ser en format binari (com al manual) i no uns codis self-defined
-  // Que hem de comprobar, que els colors son valids??
   // Rang: (000 -> 111 per bg), (0000 -> 1111 per fg)
+  if (fg < 0b0000 || fg > 0b1111 || bg < 0b000 || bg > 0b111)
+    return -EINVAL; /* Invalid argument */
 
   change_color(fg, bg);
-  return 1;
+  return 0;
 }
 
 int sys_clrscr(char* b)
 {
-  // Gestio errors
+  // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
+  //if (false)
+  //  return EFAULT;  /* Bad address */
 
+  // Moure el cursor a l'inici de la pantalla
+  move_cursor(0, 0);
 
   for (int i = 0; i < 25; ++i)
   {
     for (int j = 0; j < 80; ++j)
     {
-      char c = ' ';
-      char fg = 0;
-      char bg = 0;
-
       if (b != NULL)
-      {
-        //c = b[i][j];
-        //fg = b[i][j];
-        //bg = b[i][j];
-      }
-
-      change_color(fg, bg);
-      printc(c);
-
+        // Suposant que la matriu es guarda per files: desplacament de fila + access columna
+        // Part alta: color; Part baixa: char
+        printc_raw(b[i*80*2 + j*2 + 1] << 8 | b[i*80*2 + j*2 + 0]); 
+      else 
+        printc_raw(0);
     }
   }
 

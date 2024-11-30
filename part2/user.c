@@ -22,7 +22,13 @@ enum Colors {
   LIGHT_MAGENTA = 0b1101,
   YELLOW = 0b1110,
   WHITE = 0b1111
-}; 
+};
+
+#define NUM_COLUMNS 80
+#define NUM_ROWS    25
+
+const char WALL[2] = {' ', RED << 4 | RED};
+const char EMPTY[2] = {' ', BLACK << 4 | BLACK};
 
 int __attribute__ ((__section__(".text.main")))
   main(void)
@@ -66,9 +72,64 @@ int __attribute__ ((__section__(".text.main")))
   buff = 'c';
   write(1, &buff, sizeof(buff));
 
-  //char *matrix = NULL;
-  char *matrix;
-  //clrscr(matrix);
+  // char *empty_matrix;
+  // clrscr(empty_matrix);
+
+  char map[NUM_ROWS][NUM_COLUMNS] = {
+    "################################################################################",
+    "################################################################################",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                 ##########                                 ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                  ##########                    ##########                  ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##        ##########                                        ##########        ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "##                                                                            ##",
+    "################################################################################",
+    "################################################################################"
+  };
+
+  char test_matrix[NUM_ROWS][NUM_COLUMNS][2];
+
+  for (int i = 0; i < NUM_ROWS; ++i)
+  {
+    for (int j = 0; j < NUM_COLUMNS; ++j)
+    {
+      if (map[i][j] == '#')
+      {
+        test_matrix[i][j][0] = WALL[0];
+        test_matrix[i][j][1] = WALL[1];  
+      }
+      else if (map[i][j] == ' ')
+      {
+        test_matrix[i][j][0] = EMPTY[0];
+        test_matrix[i][j][1] = EMPTY[1];  
+      }
+      else
+      {
+        test_matrix[i][j][0] = EMPTY[0];
+        test_matrix[i][j][1] = EMPTY[1];   
+      }
+
+      
+    }
+  }
+
+
+  clrscr(&test_matrix[0][0][0]);
 
   while(1) { }
 }

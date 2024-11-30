@@ -16,5 +16,6 @@ void printc_xy(Byte x, Byte y, char c);
 void printk(char *string);
 void move_cursor(Byte x, Byte y);
 void change_color(Byte new_fg, Byte new_bg);
+void printc_raw(Word w);
 
 #endif  /* __IO_H__ */
