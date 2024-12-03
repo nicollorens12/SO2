@@ -266,3 +266,13 @@ void del_ss_pag(page_table_entry *PT, unsigned logical_page)
 unsigned int get_frame (page_table_entry *PT, unsigned int logical_page){
      return PT[logical_page].bits.pbase_addr; 
 }
+
+int is_page_used(page_table_entry *PT, unsigned page){
+  return PT[page].bits.used;
+}
+void set_page_used(page_table_entry *PT, unsigned page){
+  PT[page].bits.used = 1;
+}
+void set_page_free(page_table_entry *PT, unsigned page){
+  PT[page].bits.used = 0;
+}

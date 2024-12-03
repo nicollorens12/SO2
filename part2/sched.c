@@ -39,9 +39,9 @@ struct list_head  key_blockedqueue;
 
 struct list_head getKeyBlocked;
 
-struct list_head threads;
-
 int pending_key = 0;
+
+extern void* allocate_user_stack(int N);
 
 void init_stats(struct stats *s)
 {
@@ -175,9 +175,14 @@ void init_idle (void)
   union task_union *uc = (union task_union*)c;
 
   c->PID=0;
-
+  c->TID=global_TID++;
   c->total_quantum=DEFAULT_QUANTUM;
   c->expiring_time = -1;
+  INIT_LIST_HEAD(&c->threads);
+
+  // Configurar stack de usuario y registro CR3
+  c->user_stack_base = allocate_user_stack(1); // Asignar stack de usuario
+  c->num_stack_pages = 1;
   
   init_stats(&c->p_stats);
 
@@ -201,15 +206,12 @@ void init_task1(void)
   struct task_struct *c = list_head_to_task_struct(l);
   union task_union *uc = (union task_union*)c;
 
-  INIT_LIST_HEAD(&threads);
-
-  // Inicializar atributos del proceso/primer thread
   c->PID = 1;  // PID del proceso init
   c->TID = global_TID++;  // TID del thread
   c->total_quantum = DEFAULT_QUANTUM;
   c->state = ST_RUN;  // El thread inicial comienza en ejecución
   c->expiring_time = -1;
-
+  INIT_LIST_HEAD(&c->threads);  // Inicializar lista de threads
   remaining_quantum = c->total_quantum;  // Configurar el quantum restante
   init_stats(&c->p_stats);              // Inicializar estadísticas
 
@@ -222,10 +224,9 @@ void init_task1(void)
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
   // Configurar stack de usuario y registro CR3
-  c->user_stack_base = USER_ESP;  // Dirección base del stack de usuario
-  c->user_esp = USER_ESP - 16;    // Espacio inicial para argumentos
-  c->num_stack_pages = 1;         // Número de páginas del stack de usuario
-  list_add_tail(&c->list_thread, &threads);  
+  c->user_stack_base = allocate_user_stack(1); // Asignar stack de usuario
+  c->num_stack_pages = 1;
+
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
 

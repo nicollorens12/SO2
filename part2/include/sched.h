@@ -29,11 +29,10 @@ struct task_struct {
   int expiring_time;
 
   /* Nuevo para threads */
-  int *user_stack_base;       /* Dirección base del stack del usuario */
-  int num_stack_pages;         /* Número de páginas del stack dinámico */
-  unsigned int user_esp;       /* User stack pointer */
-  struct list_head list_thread;  /* Lista de threads del proceso */
-
+  void *user_stack_base;       /* Dirección base del stack del usuario */
+  int num_stack_pages;         /* Número de páginas del stack dinámico (N)*/
+  struct list_head threads; /* Lista de threads del proceso */
+  struct list_head list_thread;  /* Entrada de la lista de threads del proceso*/
 };
 
 union task_union {

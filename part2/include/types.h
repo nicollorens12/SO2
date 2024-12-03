@@ -146,6 +146,7 @@ typedef union
     unsigned int dirty    : 1;
     unsigned int ps_pat   : 1;
     unsigned int global   : 1;
+    unsigned int used     : 1;
     unsigned int avail    : 3;
     unsigned int pbase_addr : 20;
   } bits;
