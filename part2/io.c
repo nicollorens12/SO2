@@ -51,20 +51,6 @@ void printc(char c)
   }
 }
 
-void printc_raw(Word w)
-{
-  //Word ch = (Word) (c & 0x00FF) | 0x0200;
-  // Aplicar desplazamiento para que parte baja de `color` coincida y aplicar la mascara
-    
-  Word *screen = (Word *)0xb8000;
-  screen[(y * NUM_COLUMNS + x)] = w;
-  if (++x >= NUM_COLUMNS)
-  {
-    x = 0;
-    y=(y+1)%NUM_ROWS;
-  }
-}
-
 void printc_xy(Byte mx, Byte my, char c)
 {
   Byte cx, cy;
@@ -94,4 +80,10 @@ void change_color(Byte new_fg, Byte new_bg)
 {
   fg = new_fg;
   bg = new_bg;
+}
+
+void dump_to_screen(char *b)
+{
+  Word *screen = (Word *)0xb8000;
+  copy_data(b,screen, NUM_ROWS*NUM_COLUMNS*2);
 }

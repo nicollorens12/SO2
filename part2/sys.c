@@ -305,24 +305,22 @@ int sys_changeColor(int fg, int bg)
 int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
-  if ( b < L_USER_START || (b + sizeof(b)) > USER_ESP)
+  if ( !access_ok(VERIFY_WRITE, b, 80 * 25 * 2) )
     return EFAULT;  /* Bad address */
-
-  // Moure el cursor a l'inici de la pantalla
-  move_cursor(0, 0);
-
-  for (int i = 0; i < 25; ++i)
+  
+  if (b != NULL)
+    dump_to_screen(b);
+  else
   {
-    for (int j = 0; j < 80; ++j)
-    {
-      if (b != NULL)
-        // Suposant que la matriu es guarda per files: desplacament de fila + access columna
-        // Part alta: color; Part baixa: char
-        printc_raw(b[i*80*2 + j*2 + 1] << 8 | b[i*80*2 + j*2 + 0]); 
-      else 
-        printc_raw(0);
-    }
-  }
+    // Moure el cursor a l'inici de la pantalla
+    move_cursor(0, 0);  
+    // Posem colors a negre
+    change_color(0, 0);
 
+    // Pintem totes les posicions buides
+    for (int i = 0; i < 25; ++i)
+      for (int j = 0; j < 80; ++j)
+        printc(' ');
+  }
   return 1;
 }
