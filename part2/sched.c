@@ -41,7 +41,7 @@ struct list_head getKeyBlocked;
 
 int pending_key = 0;
 
-extern void* allocate_user_stack(int N);
+extern void* allocate_user_stack(int N, page_table_entry *process_PT);
 
 void init_stats(struct stats *s)
 {
@@ -181,7 +181,7 @@ void init_idle (void)
   INIT_LIST_HEAD(&c->threads);
 
   // Configurar stack de usuario y registro CR3
-  c->user_stack_base = allocate_user_stack(1); // Asignar stack de usuario
+  c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
   c->num_stack_pages = 1;
   
   init_stats(&c->p_stats);
@@ -224,7 +224,7 @@ void init_task1(void)
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
   // Configurar stack de usuario y registro CR3
-  c->user_stack_base = allocate_user_stack(1); // Asignar stack de usuario
+  c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
   c->num_stack_pages = 1;
 
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
@@ -269,16 +269,22 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 /* Do the magic of a task switch */
 void inner_task_switch(union task_union *new)
 {
-  page_table_entry *new_DIR = get_DIR(&new->task);
+  if(new->task.PID == current()->PID){ //Thread Switch
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  }
+  else{ // Task Switch
+    page_table_entry *new_DIR = get_DIR(&new->task);
 
-  /* Update TSS and MSR to make it point to the new stack */
-  tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
-  setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  /* TLB flush. New address space */
-  set_cr3(new_DIR);
+    /* TLB flush. New address space */
+    set_cr3(new_DIR);
 
-  switch_stack(&current()->register_esp, new->task.register_esp);
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  }
+  
 }
 
 

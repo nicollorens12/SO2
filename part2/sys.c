@@ -66,27 +66,31 @@ int ret_from_fork()
   return 0;
 }
 
-void* allocate_user_stack(int N) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
-    page_table_entry *process_PT = get_PT(current());
-
+void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
     if(N > NUM_PAG_DATA) return -1;
     int space = 0;
     for(int pag = 0; pag < NUM_PAG_DATA; pag++) {
         if(is_page_used(process_PT, pag) == 0){
-            int pag_aux = pag;
-            while(pag_aux < N - 1){
-                if(is_page_used(process_PT, pag_aux) == 0){
-                  pag_aux++;
-                  space = 1;
-                }
-                else{
-                  pag = pag_aux + 1;
-                  break;
+            if(N == 1){
+                space = 1;
+            }
+            else{
+                int pag_aux = pag;
+                while(pag_aux < N - 1){
+                    if(is_page_used(process_PT, pag_aux) == 0){
+                      pag_aux++;
+                      space = 1;
+                    }
+                    else{
+                      pag = pag_aux + 1;
+                      break;
+                    }
                 }
             }
+            
         }
         if(space){
-            for(int i = pag; i < N; i++){
+            for(int i = pag; i < pag + N; i++){
                 set_page_used(process_PT, i);
             }
             return (void*)((pag + N) << 12);
@@ -168,7 +172,7 @@ int sys_fork(void)
   INIT_LIST_HEAD(&uchild->task.threads);
 
   /* Prepare child stack */
-  uchild->task.user_stack_base = allocate_user_stack(1); // Asignar stack de usuario
+  uchild->task.user_stack_base = allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
   uchild->task.num_stack_pages = 1;
 
   int register_ebp;		/* frame pointer */
@@ -400,23 +404,26 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     
     new_thread=(union task_union*)list_head_to_task_struct(lhcurrent);
 
-    copy_data((union taks_union*) current(), new_thread, sizeof(union task_union)); //Copiamos la TCB del proceso actual al nuevo hilo
+    copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); //Copiamos la TCB del proceso actual al nuevo hilo
 
     if (!new_thread) return -ENOMEM;
 
     // Asignar el stack para el hilo
     // On hi hagi espai (te el seu propi tractamente d'erorrs)
-    void *stack_base = allocate_user_stack(N); 
+    void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
 
     // Ajustar TCB
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;
     new_thread->task.TID = global_TID++;
+    new_thread->task.state = ST_READY;
 
     // Ajustar la pila para que el hilo ejecute la función function
     unsigned int *stack_ptr = (unsigned int *)stack_base;
     *(--stack_ptr) = (unsigned int)parameter;               
     *(--stack_ptr) = (unsigned int)function;  
+    new_thread->task.register_esp = (int)stack_ptr;
+
 
     list_add_tail(&new_thread->task.list_thread, &current()->threads); // Añadir el hilo a la lista de hilos del proceso
     list_add_tail(&new_thread->task.list, &readyqueue); // Añadir el hilo a readyqueue

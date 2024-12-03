@@ -18,10 +18,11 @@ int __attribute__ ((__section__(".text.main")))
 {
   char buff[512]= "I'm the main thread\n";
 
-  //int t = threadCreateWithStack((void*)print_thread, 1, 1);
-
+  int param = 1; // Si es necesario pasar un entero como parámetro
+  int t = threadCreateWithStack(print_thread, 1, &param);
+  write(1, buff, strlen(buff));
   while(1) { 
-    //write(1, buff, strlen(buff));
+    
   }
 }
 
