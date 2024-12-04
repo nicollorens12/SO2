@@ -226,7 +226,6 @@ void init_task1(void)
   // Configurar stack de usuario y registro CR3
   c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
   c->num_stack_pages = 1;
-
   c->register_esp = c->user_stack_base;
 
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
