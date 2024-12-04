@@ -420,9 +420,10 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 
     // Ajustar la pila para que el hilo ejecute la función function
     unsigned int *stack_ptr = (unsigned int *)stack_base;
-    *(--stack_ptr) = (unsigned int)function;
-    *(--stack_ptr) = (unsigned int)parameter;               
-    *(--stack_ptr) = (unsigned int)stack_base; // ebp
+    *(--stack_ptr) = *(unsigned int *)parameter;
+    *(--stack_ptr) = sizeof(DWord);
+    *(--stack_ptr) = (unsigned int)function; 
+    *(--stack_ptr) = (unsigned int )stack_ptr;
     new_thread->task.register_esp = (int)stack_ptr;
 
 

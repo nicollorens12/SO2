@@ -227,6 +227,8 @@ void init_task1(void)
   c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
   c->num_stack_pages = 1;
 
+  c->register_esp = c->user_stack_base;
+
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
 
@@ -270,7 +272,7 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 void inner_task_switch(union task_union *new)
 {
   if(new->task.PID == current()->PID){ //Thread Switch
-    switch_stack_thread(&current()->register_esp, new->task.register_esp);
+    switch_stack(&current()->register_esp, new->task.register_esp);
   }
   else{ // Task Switch
     page_table_entry *new_DIR = get_DIR(&new->task);

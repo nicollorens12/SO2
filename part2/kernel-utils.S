@@ -5,8 +5,8 @@ ENTRY(switch_stack_thread)
     mov 4(%esp), %eax
 	mov %ebp, (%eax)
 	mov 8(%esp), %esp
+	
 	popl %ebp
-	subl $4, %esp  # "Skip" the paramter so that ret returns to the function
 	ret           
 
 
