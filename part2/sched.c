@@ -270,7 +270,7 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 void inner_task_switch(union task_union *new)
 {
   if(new->task.PID == current()->PID){ //Thread Switch
-    switch_stack(&current()->register_esp, new->task.register_esp);
+    switch_stack_thread(&current()->register_esp, new->task.register_esp);
   }
   else{ // Task Switch
     page_table_entry *new_DIR = get_DIR(&new->task);

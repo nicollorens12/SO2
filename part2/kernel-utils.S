@@ -1,5 +1,23 @@
 #include <asm.h>
 
+/* void switch_stack_thread(void ** save_sp, void * new_sp) Same as switch_stack but takes parameter from stack to %eax */
+ENTRY(switch_stack_thread)
+    mov 4(%esp), %eax          # La pila al llegar es
+    mov %ebp, (%eax)           # | ebp = 0 | <-- esp
+    mov 8(%esp), %esp          # |  func   |
+	mov %esp, %ebp			   # | &param  |
+	subl $4, %ebp
+	pushl %ebp
+    mov 8(%esp), %edx          
+    mov (%edx), %ecx           
+	mov %ecx, 8(%esp)		   # Cambiamos de | &param | a | param | es decir ahora no tiene la @ si no el valor
+	mov %ecx, 12(%esp)
+
+	popl %ebp
+    ret                        # esp apunta a func, por lo que al hacer ret, vamos a ejecutar func param deberia estar a 8(%ebp)
+
+
+
 /* void switch_stack(void ** save_sp, void * new_sp) NOT REALLY A FUNCTION!!! */
 ENTRY(switch_stack)
 	mov 4(%esp), %eax

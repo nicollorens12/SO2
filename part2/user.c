@@ -10,7 +10,6 @@ void print_thread(int i){
     write(1, buff, strlen(buff));
     write(1, "\n", 1);
   }
-  
 }
 
 int __attribute__ ((__section__(".text.main")))

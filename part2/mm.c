@@ -268,11 +268,11 @@ unsigned int get_frame (page_table_entry *PT, unsigned int logical_page){
 }
 
 int is_page_used(page_table_entry *PT, unsigned page){
-  return PT[page].bits.accessed;
+  return PT[page].bits.present;
 }
 void set_page_used(page_table_entry *PT, unsigned page){
-  PT[page].bits.accessed = 1;
+  PT[page].bits.present = 1;
 }
 void set_page_free(page_table_entry *PT, unsigned page){
-  PT[page].bits.accessed = 0;
+  PT[page].bits.present = 0;
 }
