@@ -162,6 +162,9 @@ int sys_fork(void)
     copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
     del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
   }
+
+  // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
+
   /* Deny access to the child's memory space */
   set_cr3(get_DIR(current()));
 
@@ -422,13 +425,14 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     unsigned int *stack_ptr = (unsigned int *)stack_base;
     *(--stack_ptr) = *(unsigned int *)parameter;
     *(--stack_ptr) = sizeof(DWord);
-    *(--stack_ptr) = (unsigned int)function; 
+    *(--stack_ptr) = (unsigned int)function; // Se quitara
     *(--stack_ptr) = (unsigned int )stack_ptr;
-    new_thread->task.register_esp = (int)stack_ptr;
+    // ESP CTX HW = (int)stack_ptr;
+    // EIP CTX function
 
 
     list_add_tail(&new_thread->task.list_thread, &current()->threads); // Añadir el hilo a la lista de hilos del proceso
-    list_add_tail(&new_thread->task.list, &readyqueue); // Añadir el hilo a readyqueue
+    list_add_tail(&new_thread->task.list, &readyqueue);
 
     return new_thread->task.TID;
 }

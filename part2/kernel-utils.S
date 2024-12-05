@@ -1,16 +1,5 @@
 #include <asm.h>
 
-/* void switch_stack_thread(void ** save_sp, void * new_sp) Same as switch_stack but takes parameter from stack to %eax */
-ENTRY(switch_stack_thread)
-    mov 4(%esp), %eax
-	mov %ebp, (%eax)
-	mov 8(%esp), %esp
-	
-	popl %ebp
-	ret           
-
-
-
 /* void switch_stack(void ** save_sp, void * new_sp) NOT REALLY A FUNCTION!!! */
 ENTRY(switch_stack)
 	mov 4(%esp), %eax

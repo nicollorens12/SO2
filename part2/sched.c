@@ -69,6 +69,7 @@ page_table_entry * get_PT (struct task_struct *t)
 
 int allocate_DIR(struct task_struct *t) 
 {
+  //S'ha de mirar miillor quins son els directoris ocupats, no nomes per la posició i-essima
 	int pos;
 
 	pos = ((int)t-(int)task)/sizeof(union task_union);
@@ -224,9 +225,9 @@ void init_task1(void)
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
   // Configurar stack de usuario y registro CR3
-  c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
-  c->num_stack_pages = 1;
-  c->register_esp = c->user_stack_base;
+  //c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
+  //c->num_stack_pages = 1;
+  //c->register_esp = c->user_stack_base;
 
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
