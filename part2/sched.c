@@ -66,17 +66,40 @@ page_table_entry * get_PT (struct task_struct *t)
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
+int task_directories[NR_TASKS];
+
+int get_dir_pos(struct task_struct *t) 
+{
+  return (t->dir_pages_baseAddr - (page_table_entry *) &dir_pages[0]) / sizeof(page_table_entry);
+}
+
+int deallocate_DIR(struct task_struct *t) 
+{
+  int pos = get_dir_pos(t);
+  task_directories[pos] -= 1;
+
+  return 1;
+}
 
 int allocate_DIR(struct task_struct *t) 
 {
-  //S'ha de mirar miillor quins son els directoris ocupats, no nomes per la posició i-essima
-	int pos;
+  // int i = 0;
+  // while(task_directories[i] != 0 && i < NR_TASKS) {
+  //   i++;
+  // }
+  // if(i == NR_TASKS) return -1;
+  // task_directories[i] = 1;
+  // t->dir_pages_baseAddr = (page_table_entry *) &dir_pages[i];
+// 
+  // return 1;
 
-	pos = ((int)t-(int)task)/sizeof(union task_union);
+  int pos;
 
-	t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+    pos = ((int)t-(int)task)/sizeof(union task_union);
 
-	return 1;
+    t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+
+    return 1;
 }
 
 void cpu_idle(void)
@@ -254,6 +277,10 @@ void init_sched()
   INIT_LIST_HEAD(&blocked);
   INIT_LIST_HEAD(&key_blockedqueue);
   INIT_LIST_HEAD(&getKeyBlocked);
+
+  for(int i = 0; i < NR_TASKS; i++) {
+    task_directories[i] = 0;
+  }
 }
 
 struct task_struct* current()

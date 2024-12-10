@@ -164,6 +164,14 @@ int sys_fork(void)
   }
 
   // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
+  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag< TOTAL_PAGES; pag++){
+    if(is_page_used(parent_PT, pag)){
+      set_ss_pag(parent_PT, pag+NUM_PAG_DATA, get_frame(process_PT, pag));
+      copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
+      del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
+    }
+  }
+
 
   /* Deny access to the child's memory space */
   set_cr3(get_DIR(current()));
@@ -371,8 +379,8 @@ int sys_clrscr(char* b)
   return 1;
 }
 
-/** Thread EXIT should be joined with the other sys_exit 
-void sys_exit() {
+/** Thread EXIT should be joined with the other sys_exit **/
+void sys_exit_thread() {
     struct task_struct *current_thread = current();
 
     // Liberar el stack del usuario
@@ -390,9 +398,9 @@ void sys_exit() {
     list_del(&current_thread->list_thread);
     list_del(&current_thread->list);
 
-    schedule();  // Cambiar al siguiente thread
+    schedule();  
 }
-*/
+
 
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     struct list_head *lhcurrent = NULL;
@@ -408,7 +416,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
     unsigned int *stack_ptr = stack_base;
 
-    *(--stack_ptr) = (unsigned int)parameter; 
+    *(--stack_ptr) = *((unsigned int*)parameter); 
     *(--stack_ptr) = 0; 
 
     new_thread->task.user_stack_base = stack_base;
@@ -416,9 +424,8 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread->task.TID = global_TID++;
     new_thread->task.state = ST_READY;
 
-    new_thread->stack[KERNEL_STACK_SIZE-1] = (unsigned int)stack_ptr;
+    new_thread->stack[KERNEL_STACK_SIZE-2] = (unsigned int)stack_ptr;
     new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)function;
-    new_thread->stack[KERNEL_STACK_SIZE-16] = (unsigned int) parameter; 
 
     int register_ebp = (int) get_ebp();
     register_ebp = (register_ebp - (int)current()) + (int)(new_thread);
