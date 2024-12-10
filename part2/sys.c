@@ -395,47 +395,47 @@ void sys_exit() {
 */
 
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
-    
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;
     
     if (list_empty(&freequeue)) return -ENOMEM;
 
-    lhcurrent=list_first(&freequeue);
-    
+    lhcurrent = list_first(&freequeue);
     list_del(lhcurrent);
-    
-    new_thread=(union task_union*)list_head_to_task_struct(lhcurrent);
+    new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
+    copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
 
-    copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); //Copiamos la TCB del proceso actual al nuevo hilo
-
-    if (!new_thread) return -ENOMEM;
-
-    // Asignar el stack para el hilo
-    // On hi hagi espai (te el seu propi tractamente d'erorrs)
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
+    unsigned int *stack_ptr = stack_base;
 
-    // Ajustar TCB
+    *(--stack_ptr) = (unsigned int)parameter; 
+    *(--stack_ptr) = 0; 
+
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;
     new_thread->task.TID = global_TID++;
     new_thread->task.state = ST_READY;
 
-    // Ajustar la pila para que el hilo ejecute la función function
-    unsigned int *stack_ptr = (unsigned int *)stack_base;
-    *(--stack_ptr) = *(unsigned int *)parameter;
-    *(--stack_ptr) = sizeof(DWord);
-    *(--stack_ptr) = (unsigned int)function; // Se quitara
-    *(--stack_ptr) = (unsigned int )stack_ptr;
-    // ESP CTX HW = (int)stack_ptr;
-    // EIP CTX function
+    new_thread->stack[KERNEL_STACK_SIZE-1] = (unsigned int)stack_ptr;
+    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)function;
+    new_thread->stack[KERNEL_STACK_SIZE-16] = (unsigned int) parameter; 
 
+    int register_ebp = (int) get_ebp();
+    register_ebp = (register_ebp - (int)current()) + (int)(new_thread);
+    new_thread->task.register_esp = register_ebp + sizeof(DWord);
 
-    list_add_tail(&new_thread->task.list_thread, &current()->threads); // Añadir el hilo a la lista de hilos del proceso
+    DWord temp_ebp = *(DWord *)register_ebp;
+    new_thread->task.register_esp -= sizeof(DWord);
+    *(DWord *)(new_thread->task.register_esp) = (DWord)&ret_from_fork;
+    new_thread->task.register_esp -= sizeof(DWord);
+    *(DWord *)(new_thread->task.register_esp) = temp_ebp;
+
+    list_add_tail(&new_thread->task.list_thread, &current()->threads);
     list_add_tail(&new_thread->task.list, &readyqueue);
 
     return new_thread->task.TID;
 }
+
 
 
 
