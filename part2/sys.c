@@ -69,7 +69,10 @@ int ret_from_fork()
 void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
     if(N > NUM_PAG_DATA) return -1;
     int space = 0;
-    for(int pag = 0; pag < NUM_PAG_DATA; pag++) {
+    
+
+    int new_ph_pag, pag, i;
+    for(int pag = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag < TOTAL_PAGES; pag++) {
         if(is_page_used(process_PT, pag) == 0){
             if(N == 1){
                 space = 1;
@@ -90,10 +93,25 @@ void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fo
             
         }
         if(space){
-            for(int i = pag; i < pag + N; i++){
-                set_page_used(process_PT, i);
+            for(i = pag; i < pag + N; i++){
+                int new_ph_pag=alloc_frame();
+                if (new_ph_pag!=-1) /* One page allocated */
+                {
+                  set_ss_pag(process_PT, pag, new_ph_pag);
+                }
+                else /* No more free pages left. Deallocate everything */
+                {
+                  /* Deallocate allocated pages. Up to pag. */
+                  for (i=0; i<pag; i++)
+                  {
+                    del_ss_pag(process_PT, i);
+                  }
+                  
+                  /* Return error */
+                  return -EAGAIN; 
+                }
             }
-            return (void*)((pag + N) << 12);
+            return (void*)((pag + N) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
         }   
     }
 }
@@ -416,8 +434,10 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
     unsigned int *stack_ptr = stack_base;
 
-    *(--stack_ptr) = *((unsigned int*)parameter); 
-    *(--stack_ptr) = 0; 
+    stack_ptr -= sizeof(DWord);
+    *(stack_ptr) = *((unsigned int*)parameter); 
+    stack_ptr -= sizeof(DWord);
+    *(stack_ptr) = 0; 
 
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;

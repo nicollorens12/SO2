@@ -36,7 +36,7 @@ int changeColor(int fg, int bg);
 
 int clrscr(char* b);
 
-int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* parameter );
+int threadCreateWithStack( void (*function)(void* arg), int N, void* parameter );
 
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
