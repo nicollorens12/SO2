@@ -72,7 +72,7 @@ void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fo
     
 
     int new_ph_pag, pag, i;
-    for(int pag = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag < TOTAL_PAGES; pag++) {
+    for(int pag = PAG_LOG_INIT_DATA+NUM_PAG_DATA; pag < TOTAL_PAGES; pag++) {
         if(is_page_used(process_PT, pag) == 0){
             if(N == 1){
                 space = 1;
@@ -111,7 +111,7 @@ void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fo
                   return -EAGAIN; 
                 }
             }
-            return (void*)((pag + N) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
+            return (void*)((pag + N - 1) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
         }   
     }
 }
@@ -200,7 +200,7 @@ int sys_fork(void)
   uchild->task.expiring_time = -1;
   INIT_LIST_HEAD(&uchild->task.threads);
 
-  /* Prepare child stack */
+  /* Prepare child stack */ // S'ha de fer? Potser no cal
   uchild->task.user_stack_base = allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
   uchild->task.num_stack_pages = 1;
 
@@ -268,22 +268,30 @@ int sys_gettime()
 void sys_exit()
 {  
   int i;
+  reduce_dir_reference(current());
 
-  page_table_entry *process_PT = get_PT(current());
-
-  // Deallocate all the propietary physical pages
-  for (i=0; i<NUM_PAG_DATA; i++)
-  {
-    free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
-    del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+  if(current()->num_stack_pages > 0){ //Si era un thread con stack dinamico, se libera
+    for(i = 0; i < current()->num_stack_pages; i++){
+        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
+        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+    }
   }
-  
+  if(check_dir_references(current()) == 0){ //Si era el ultimo thread con este directorio, se libera
+    page_table_entry *process_PT = get_PT(current());
+
+    // Deallocate all the propietary physical pages
+    for (i=0; i<NUM_PAG_DATA; i++)
+    {
+      free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
+      del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+    }
+    
+  }
   /* Free task_struct */
   list_add_tail(&(current()->list), &freequeue);
-  
+    
   current()->PID=-1;
-  
-  /* Restarts execution of the next process */
+
   sched_next_rr();
 }
 
@@ -431,13 +439,15 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
     copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
 
+    add_dir_reference(new_thread);
+
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
     unsigned int *stack_ptr = stack_base;
 
     stack_ptr -= sizeof(DWord);
     *(stack_ptr) = *((unsigned int*)parameter); 
     stack_ptr -= sizeof(DWord);
-    *(stack_ptr) = 0; 
+    *(stack_ptr) = 1; 
 
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;

@@ -4,18 +4,21 @@
 
 void print_thread(int i){
   char buff[512] = "I'm the new thread";
-  while(1){
     write(1, buff, strlen(buff));
     itoa(i, buff);
     write(1, buff, strlen(buff));
     write(1, "\n", 1);
-  }
+
+  exit();
+  
 }
 
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
-  char buff[512]= "I'm the main thread\n";
+  char buff[512]= "\nI'm the main thread\n";
+
+  //int pid = fork();
 
   int param = 1; // Si es necesario pasar un entero como parámetro
   int t = threadCreateWithStack(print_thread, 1, &param);

@@ -73,33 +73,43 @@ int get_dir_pos(struct task_struct *t)
   return (t->dir_pages_baseAddr - (page_table_entry *) &dir_pages[0]) / sizeof(page_table_entry);
 }
 
-int deallocate_DIR(struct task_struct *t) 
+int check_dir_references(struct task_struct *t) 
+{
+  return task_directories[get_dir_pos(t)];
+}
+
+int reduce_dir_reference(struct task_struct *t) 
 {
   int pos = get_dir_pos(t);
   task_directories[pos] -= 1;
+  return 1;
+}
 
+int add_dir_reference(struct task_struct *t) 
+{
+  task_directories[get_dir_pos(t)] += 1;
   return 1;
 }
 
 int allocate_DIR(struct task_struct *t) 
 {
-  // int i = 0;
-  // while(task_directories[i] != 0 && i < NR_TASKS) {
-  //   i++;
-  // }
-  // if(i == NR_TASKS) return -1;
-  // task_directories[i] = 1;
-  // t->dir_pages_baseAddr = (page_table_entry *) &dir_pages[i];
-// 
-  // return 1;
+   int i = 0;
+   while(task_directories[i] != 0 && i < NR_TASKS) {
+     i++;
+   }
+   if(i == NR_TASKS) return -1;
+   task_directories[i] = 1;
+   t->dir_pages_baseAddr = (page_table_entry *) &dir_pages[i];
 
-  int pos;
+   return 1;
 
-    pos = ((int)t-(int)task)/sizeof(union task_union);
+  //int pos;
 
-    t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+  //  pos = ((int)t-(int)task)/sizeof(union task_union);
 
-    return 1;
+  //  t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+
+  //  return 1;
 }
 
 void cpu_idle(void)
@@ -205,8 +215,8 @@ void init_idle (void)
   INIT_LIST_HEAD(&c->threads);
 
   // Configurar stack de usuario y registro CR3
-  c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
-  c->num_stack_pages = 1;
+  c->user_stack_base = NULL;
+  c->num_stack_pages = 0;
   
   init_stats(&c->p_stats);
 
