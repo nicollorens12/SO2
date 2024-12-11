@@ -20,7 +20,7 @@ int __attribute__ ((__section__(".text.main")))
 
   //int pid = fork();
 
-  int param = 1; // Si es necesario pasar un entero como parámetro
+  int param = 10; // Si es necesario pasar un entero como parámetro
   int t = threadCreateWithStack(print_thread, 1, &param);
   write(1, buff, strlen(buff));
   while(1) { 

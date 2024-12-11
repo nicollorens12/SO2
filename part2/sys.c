@@ -444,10 +444,14 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
     unsigned int *stack_ptr = stack_base;
 
-    stack_ptr -= sizeof(DWord);
+    stack_ptr -= 1;
     *(stack_ptr) = *((unsigned int*)parameter); 
-    stack_ptr -= sizeof(DWord);
-    *(stack_ptr) = 1; 
+    stack_ptr -= 1;
+    *stack_ptr = 0;
+    //*(stack_ptr) = *((unsigned int*)parameter); 
+    // *(DWord *)(stack_ptr) = (DWord)5; 
+    // stack_ptr -= sizeof(DWord);
+    // *(DWord *)(stack_ptr) = (DWord)10; 
 
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;
