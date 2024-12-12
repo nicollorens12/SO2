@@ -405,29 +405,6 @@ int sys_clrscr(char* b)
   return 1;
 }
 
-/** Thread EXIT should be joined with the other sys_exit **/
-void sys_exit_thread() {
-    struct task_struct *current_thread = current();
-
-    // Liberar el stack del usuario
-    int num_stack_pages = current_thread->num_stack_pages;
-    //El -1 es porque, conviritiendo la direccion a pagina, al estar en el bottom, me daria el # siguiente
-    int base_page = ((int)current_thread->user_stack_base >> 12) - 1; 
-    for(int i = base_page; i < base_page + num_stack_pages; i++){
-        set_page_free(get_PT(current_thread), i);
-    }
-
-    current_thread->TID = -1;
-    current_thread->user_stack_base = NULL;
-    current_thread->num_stack_pages = 0;
-
-    list_del(&current_thread->list_thread);
-    list_del(&current_thread->list);
-
-    schedule();  
-}
-
-
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;

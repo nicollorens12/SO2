@@ -9,7 +9,7 @@ void print_thread(int i){
     write(1, buff, strlen(buff));
     write(1, "\n", 1);
 
-  exit();
+    exit();
   
 }
 
@@ -27,40 +27,3 @@ int __attribute__ ((__section__(".text.main")))
     
   }
 }
-
-//if(pid == 0){
-//    char b;
-//    int resp;
-//    buff = "Child process\n";
-//    write(1,buff,strlen(buff));
-//
-//    resp = getKey(&b, 6);
-//
-//    buff = "--Test getKey() Child: ";
-//    write(1,buff,strlen(buff));
-//    if(resp < 0){
-//      buff = "Timed out!";
-//    }
-//    else buff[0] = b;
-//    write(1,buff,strlen(buff));
-//    buff = "\n";
-//    write(1,buff,strlen(buff));
-//  }
-//  else{
-//    int resp;
-//    char b;
-//    buff = "Parent process\n";
-//    write(1,buff,strlen(buff));
-//
-//    resp = getKey(&b, 3);
-//
-//    buff = "--Test getKey() Parent: ";
-//    write(1,buff,strlen(buff));
-//    if(resp < 0){
-//      buff = "Timed out!";
-//    }
-//    else buff[0] = b;
-//    write(1,buff,strlen(buff));
-//    buff = "\n";
-//    write(1,buff,strlen(buff));
-//  }//

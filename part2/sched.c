@@ -309,6 +309,10 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 void inner_task_switch(union task_union *new)
 {
   if(new->task.PID == current()->PID){ //Thread Switch
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
+
     switch_stack(&current()->register_esp, new->task.register_esp);
   }
   else{ // Task Switch
