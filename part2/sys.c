@@ -19,6 +19,8 @@
 
 #include <interrupt.h>
 
+#include <sem.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
@@ -322,5 +324,68 @@ int sys_clrscr(char* b)
       for (int j = 0; j < 80; ++j)
         printc(' ');
   }
+  return 1;
+}
+
+
+// De moment posso aixo per compilar
+struct sem_t sem_list[10];
+
+// Necessito una estructura per guardar semafors --> Array
+// Pero quantes entrades necessito
+// Tambe haure de saber quins estan lliures i no --> etc
+// Cerca de lliures 
+// Inicialitzar semafors !!! --> Compte amb la llista
+// [temp] --> Nomes treballare amb el semafor 0
+
+struct sem_t* sys_semCreate(int initial_value)
+{
+    struct sem_t *s = &sem_list[0];
+    s->count = initial_value;
+    INIT_LIST_HEAD(&s->blocked);
+
+    return s;
+}
+
+int sys_semWait(struct sem_t* s)
+{
+  --(s->count);
+  if (s->count < 0)
+  {
+    list_add_tail(&current()->list, &s->blocked);
+    sched_next_rr();
+  }
+
+  return 1;
+}
+
+int sys_semSignal(struct sem_t* s)
+{
+  ++(s->count);
+  if (s->count <= 0)
+  {
+    struct list_head *l = list_first( &(s->blocked) );
+    list_del(l);
+    struct task_struct *t = list_head_to_task_struct(l);
+    list_add_tail(&t->list, &readyqueue);
+  }
+
+  return 1;
+}
+
+int sys_semDestroy(struct sem_t* s)
+{
+  s->count = 0;
+
+  struct list_head *l = &s->blocked;
+  struct list_head *e = list_first(l);
+
+
+  list_for_each( e, l ) 
+  {
+      list_del(e);
+      //struct element * realelement = list_entry( e, struct element, anchor );
+  }
+
   return 1;
 }

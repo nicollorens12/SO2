@@ -8,6 +8,8 @@
 
 #include <stats.h>
 
+#include <sem.h>
+
 extern int errno;
 
 int write(int fd, char *buffer, int size);
@@ -33,6 +35,14 @@ int gotoXY(int x, int y);
 int changeColor(int fg, int bg);
 
 int clrscr(char* b);
+
+struct sem_t* semCreate(int initial_value);
+
+int semWait(struct sem_t* s);
+
+int semSignal(struct sem_t* s);
+
+int semDestroy(struct sem_t* s);
 
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
