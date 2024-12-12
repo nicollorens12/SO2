@@ -28,6 +28,7 @@ extern struct list_head blocked;
 extern struct list_head getKeyBlocked;
 extern struct list_head key_blockedqueue;
 extern int pending_key;
+extern struct sem_t sem_list[NUM_SEM];
 
 void * get_ebp();
 
@@ -308,7 +309,7 @@ int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
   if ( !access_ok(VERIFY_WRITE, b, 80 * 25 * 2) )
-    return EFAULT;  /* Bad address */
+    return -EFAULT;  /* Bad address */
   
   if (b != NULL)
     dump_to_screen(b);
@@ -327,20 +328,23 @@ int sys_clrscr(char* b)
   return 1;
 }
 
-
-// De moment posso aixo per compilar
-struct sem_t sem_list[10];
-
 // Necessito una estructura per guardar semafors --> Array
 // Pero quantes entrades necessito
 // Tambe haure de saber quins estan lliures i no --> etc
 // Cerca de lliures 
 // Inicialitzar semafors !!! --> Compte amb la llista
-// [temp] --> Nomes treballare amb el semafor 0
+// --temp-- Nomes treballare amb el semafor 0
 
 struct sem_t* sys_semCreate(int initial_value)
 {
-    struct sem_t *s = &sem_list[0];
+    // Habra que buscar uno libre --> si no hay uno libre devolver error
+    int i = get_sem_free_idx();
+    if (i == -1)
+    //  return -ESEMNOSPC;
+      return NULL;
+    
+    struct sem_t *s = &sem_list[i];
+    //s->TID = current()->TID;
     s->count = initial_value;
     INIT_LIST_HEAD(&s->blocked);
 
@@ -349,6 +353,12 @@ struct sem_t* sys_semCreate(int initial_value)
 
 int sys_semWait(struct sem_t* s)
 {
+  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
+  // o del que no es del mismo proceso --> ERROR
+  // ?? Mejor anyadir PID como campo de sem
+  //if (current()->PID != s->PID)
+  //  return -ESEMNOPRP;
+
   --(s->count);
   if (s->count < 0)
   {
@@ -361,6 +371,13 @@ int sys_semWait(struct sem_t* s)
 
 int sys_semSignal(struct sem_t* s)
 {
+  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
+  // o del que no es del mismo proceso --> ERROR
+  // ?? Mejor anyadir PID como campo de sem
+  //if (current()->PID != s->PID)
+  //  return -ESEMNOPRP;
+
+
   ++(s->count);
   if (s->count <= 0)
   {
@@ -375,17 +392,34 @@ int sys_semSignal(struct sem_t* s)
 
 int sys_semDestroy(struct sem_t* s)
 {
+  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
+  // o del que no es del mismo proceso --> ERROR
+  // ?? Mejor anyadir PID como campo de sem
+  //if (current()->TID != s->TID )
+  //  return -ESEMNOPRP;
+
+  s->TID = -1;
   s->count = 0;
 
   struct list_head *l = &s->blocked;
-  struct list_head *e = list_first(l);
 
-
-  list_for_each( e, l ) 
+  struct list_head *pos, *n;
+  list_for_each_safe(pos, n, l)
   {
-      list_del(e);
-      //struct element * realelement = list_entry( e, struct element, anchor );
+      list_del(pos);
+      struct task_struct *t = list_head_to_task_struct(l);
+      list_add_tail(&t->list, &readyqueue);
   }
 
   return 1;
+}
+
+// Si no hay semaforos libres devuelve -1
+int get_sem_free_idx()
+{
+  for (int i = 0; i < NUM_SEM; ++i)
+    if (sem_list[i].TID == -1)
+      return i;
+
+  return -1;
 }

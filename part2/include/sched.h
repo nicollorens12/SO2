@@ -9,10 +9,12 @@
 #include <types.h>
 #include <mm_address.h>
 #include <stats.h>
+#include <sem.h>
 
 
 #define NR_TASKS      10
 #define KERNEL_STACK_SIZE	1024
+#define NUM_SEM 10
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
@@ -36,7 +38,7 @@ union task_union {
 extern union task_union protected_tasks[NR_TASKS+2];
 extern union task_union *task; /* Vector de tasques */
 extern struct task_struct *idle_task;
-
+extern struct sem_t sem_list[NUM_SEM];
 
 #define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 

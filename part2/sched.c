@@ -41,6 +41,15 @@ struct list_head getKeyBlocked;
 
 int pending_key = 0;
 
+// Sem list
+struct sem_t sem_list[NUM_SEM];
+
+void init_sem_list()
+{
+  for (int i = 0; i < NUM_SEM; ++i)
+    sem_list[i].TID = -1;
+}
+
 void init_stats(struct stats *s)
 {
 	s->user_ticks = 0;
@@ -240,6 +249,8 @@ void init_sched()
   INIT_LIST_HEAD(&blocked);
   INIT_LIST_HEAD(&key_blockedqueue);
   INIT_LIST_HEAD(&getKeyBlocked);
+
+  init_sem_list();
 }
 
 struct task_struct* current()
