@@ -184,9 +184,20 @@ int sys_fork(void)
   // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
   for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag< TOTAL_PAGES; pag++){
     if(is_page_used(parent_PT, pag)){
-      set_ss_pag(parent_PT, pag+NUM_PAG_DATA, get_frame(process_PT, pag));
-      copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
-      del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
+      int i = 1;
+      while(is_page_used(parent_PT, pag + i)) ++i;
+      void *space_base_pointer = allocate_user_stack(i, parent_PT);
+      int space_base_index = (unsigned int) space_base_pointer >> 12;
+      int space_top_index = space_base_index - i;
+      int j;
+
+      for(j = space_top_index; j < pag + i; ++j){
+        set_ss_pag(parent_PT, j, get_frame(process_PT,j));
+        copy_data((void*)(pag<<12), (void*)((j)<<12), PAGE_SIZE);
+        del_ss_pag(parent_PT, j);
+      }
+
+      pag += i - 1;
     }
   }
 
