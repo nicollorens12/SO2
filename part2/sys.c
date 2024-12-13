@@ -353,11 +353,7 @@ struct sem_t* sys_semCreate(int initial_value)
 
 int sys_semWait(struct sem_t* s)
 {
-  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
-  // o del que no es del mismo proceso --> ERROR
-  // ?? Mejor anyadir PID como campo de sem
-  //if (current()->PID != s->PID)
-  //  return -ESEMNOPRP;
+  // Addresa dins de la zona de memoria de la llista 
 
   --(s->count);
   if (s->count < 0)
@@ -369,13 +365,8 @@ int sys_semWait(struct sem_t* s)
   return 1;
 }
 
-int sys_semSignal(struct sem_t* s)
-{
-  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
-  // o del que no es del mismo proceso --> ERROR
-  // ?? Mejor anyadir PID como campo de sem
-  //if (current()->PID != s->PID)
-  //  return -ESEMNOPRP;
+int sys_semSignal(struct sem_t* s){
+  //Comprabar rang adreces
 
 
   ++(s->count);
