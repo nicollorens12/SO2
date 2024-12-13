@@ -114,6 +114,7 @@ void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fo
             return (void*)((pag + N - 1) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
         }   
     }
+    return NULL;
 }
 
 int sys_fork(void)
@@ -187,6 +188,21 @@ int sys_fork(void)
       int i = 1;
       while(is_page_used(parent_PT, pag + i)) ++i;
       void *space_base_pointer = allocate_user_stack(i, parent_PT);
+
+      if(space_base_pointer == NULL) {
+        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag_aux<=pag; pag_aux++)
+        {
+          if(is_page_used(process_PT, pag_aux)){
+            free_frame(get_frame(process_PT, pag_aux));
+            del_ss_pag(process_PT, pag_aux);
+          }
+        }
+        list_add_tail(lhcurrent, &freequeue);
+            
+        /* Return error */
+        return -EAGAIN; 
+      }
+      
       int space_base_index = (unsigned int) space_base_pointer >> 12;
       int space_top_index = space_base_index - i;
       int j;
