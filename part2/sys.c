@@ -60,6 +60,7 @@ int sys_getpid()
 }
 
 int global_PID=1000;
+int global_TID= 0;
 
 int ret_from_fork()
 {
@@ -134,6 +135,7 @@ int sys_fork(void)
   set_cr3(get_DIR(current()));
 
   uchild->task.PID=++global_PID;
+  //uchild->task.TID=++global_TID;
   uchild->task.state=ST_READY;
   uchild->task.expiring_time = -1;
 
@@ -200,6 +202,14 @@ int sys_gettime()
 
 void sys_exit()
 {  
+  // Si soc el propietari d'un semafor sys_semDestroy
+  /**
+   * for(int i = 0; i < NUM_SEM; ++i){
+   *  sem_list[i].TID == current()->TID;
+   *  sys_semDestroy(&sem_list[i])
+   * }
+    
+  */
   int i;
 
   page_table_entry *process_PT = get_PT(current());
@@ -354,20 +364,26 @@ struct sem_t* sys_semCreate(int initial_value)
 int sys_semWait(struct sem_t* s)
 {
   // Addresa dins de la zona de memoria de la llista 
-
+  /*
+    comprobar adresa dins de la llista
+    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  */
   --(s->count);
   if (s->count < 0)
   {
     list_add_tail(&current()->list, &s->blocked);
     sched_next_rr();
+
   }
 
   return 1;
 }
 
-int sys_semSignal(struct sem_t* s){
+int sys_semSignal(struct sem_t* s){ // Haig de guardar a la tcb si estic despert per un signal o per un destory
   //Comprabar rang adreces
-
+  /*
+    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  */
 
   ++(s->count);
   if (s->count <= 0)
@@ -375,6 +391,7 @@ int sys_semSignal(struct sem_t* s){
     struct list_head *l = list_first( &(s->blocked) );
     list_del(l);
     struct task_struct *t = list_head_to_task_struct(l);
+    t->wake_reason = SEM_SIG;
     list_add_tail(&t->list, &readyqueue);
   }
 
@@ -399,6 +416,7 @@ int sys_semDestroy(struct sem_t* s)
   {
       list_del(pos);
       struct task_struct *t = list_head_to_task_struct(l);
+      t->wake_reason = SEM_DES;
       list_add_tail(&t->list, &readyqueue);
   }
 

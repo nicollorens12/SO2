@@ -142,6 +142,7 @@
 /* Sem syscall errors */
 #define ESEMNOPRP 132 /* Thread o Proceso no es propietario de ese semaforo (creador) */
 #define ESEMNOSPC 133 /* No hay semaforos libres */
+#define ESEMINVADR 134
 
 #endif
 

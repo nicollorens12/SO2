@@ -17,6 +17,7 @@
 #define NUM_SEM 10
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
+enum wake_t {SEM_SIG, SEM_DES};
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
@@ -28,6 +29,7 @@ struct task_struct {
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
   int expiring_time;
+  int wake_reason; 
 };
 
 union task_union {
