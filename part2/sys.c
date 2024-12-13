@@ -27,6 +27,8 @@
 extern struct list_head blocked;
 extern struct list_head getKeyBlocked;
 extern struct list_head key_blockedqueue;
+extern struct list_head threads;
+
 extern int pending_key;
 extern struct sem_t sem_list[NUM_SEM];
 
@@ -60,11 +62,62 @@ int sys_getpid()
 }
 
 int global_PID=1000;
-int global_TID= 0;
+int global_TID=0;
 
 int ret_from_fork()
 {
   return 0;
+}
+
+void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
+    if(N > NUM_PAG_DATA) return -1;
+    int space = 0;
+    
+
+    int new_ph_pag, pag, i;
+    for(int pag = PAG_LOG_INIT_DATA+NUM_PAG_DATA; pag < TOTAL_PAGES; pag++) {
+        if(is_page_used(process_PT, pag) == 0){
+            if(N == 1){
+                space = 1;
+            }
+            else{
+                int pag_aux = pag;
+                while(pag_aux < N - 1){
+                    if(is_page_used(process_PT, pag_aux) == 0){
+                      pag_aux++;
+                      space = 1;
+                    }
+                    else{
+                      pag = pag_aux + 1;
+                      break;
+                    }
+                }
+            }
+            
+        }
+        if(space){
+            for(i = pag; i < pag + N; i++){
+                int new_ph_pag=alloc_frame();
+                if (new_ph_pag!=-1) /* One page allocated */
+                {
+                  set_ss_pag(process_PT, pag, new_ph_pag);
+                }
+                else /* No more free pages left. Deallocate everything */
+                {
+                  /* Deallocate allocated pages. Up to pag. */
+                  for (i=0; i<pag; i++)
+                  {
+                    del_ss_pag(process_PT, i);
+                  }
+                  
+                  /* Return error */
+                  return -EAGAIN; 
+                }
+            }
+            return (void*)((pag + N - 1) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
+        }   
+    }
+    return NULL;
 }
 
 int sys_fork(void)
@@ -131,13 +184,55 @@ int sys_fork(void)
     copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
     del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
   }
+
+  // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
+  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag< TOTAL_PAGES; pag++){
+    if(is_page_used(parent_PT, pag)){
+      int i = 1;
+      while(is_page_used(parent_PT, pag + i)) ++i;
+      void *space_base_pointer = allocate_user_stack(i, parent_PT);
+
+      if(space_base_pointer == NULL) {
+        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag_aux<=pag; pag_aux++)
+        {
+          if(is_page_used(process_PT, pag_aux)){
+            free_frame(get_frame(process_PT, pag_aux));
+            del_ss_pag(process_PT, pag_aux);
+          }
+        }
+        list_add_tail(lhcurrent, &freequeue);
+            
+        /* Return error */
+        return -EAGAIN; 
+      }
+      
+      int space_base_index = (unsigned int) space_base_pointer >> 12;
+      int space_top_index = space_base_index - i;
+      int j;
+
+      for(j = space_top_index; j < pag + i; ++j){
+        set_ss_pag(parent_PT, j, get_frame(process_PT,j));
+        copy_data((void*)(pag<<12), (void*)((j)<<12), PAGE_SIZE);
+        del_ss_pag(parent_PT, j);
+      }
+
+      pag += i - 1;
+    }
+  }
+
+
   /* Deny access to the child's memory space */
   set_cr3(get_DIR(current()));
 
   uchild->task.PID=++global_PID;
-  //uchild->task.TID=++global_TID;
+  uchild->task.TID=global_TID++;
   uchild->task.state=ST_READY;
   uchild->task.expiring_time = -1;
+  INIT_LIST_HEAD(&uchild->task.threads);
+
+  /* Prepare child stack */ // S'ha de fer? Potser no cal
+  uchild->task.user_stack_base = NULL; //allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
+  uchild->task.num_stack_pages = 0;
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -211,22 +306,40 @@ void sys_exit()
     
   */
   int i;
+  reduce_dir_reference(current());
 
-  page_table_entry *process_PT = get_PT(current());
-
-  // Deallocate all the propietary physical pages
-  for (i=0; i<NUM_PAG_DATA; i++)
-  {
-    free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
-    del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+  if(current()->num_stack_pages > 0){ //Si era un thread con stack dinamico, se libera
+    for(i = 0; i < current()->num_stack_pages; i++){
+        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
+        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+    }
   }
-  
+  if(check_dir_references(current()) == 0){ //Si era el ultimo thread con este directorio, se libera
+    page_table_entry *process_PT = get_PT(current());
+
+    // Deallocate all the propietary physical pages
+    for (i=0; i<NUM_PAG_DATA; i++)
+    {
+      free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
+      del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+    }
+
+    // Deallocate all heap (USER DYNAMIC STACKS)
+    for (i = NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA; i < TOTAL_PAGES; ++i)
+    {
+      if (is_page_used(process_PT, i))
+      {
+        free_frame(get_frame(process_PT, i));
+        del_ss_pag(process_PT, i);   
+      }
+    }
+    
+  }
   /* Free task_struct */
   list_add_tail(&(current()->list), &freequeue);
-  
+    
   current()->PID=-1;
-  
-  /* Restarts execution of the next process */
+
   sched_next_rr();
 }
 
@@ -432,3 +545,56 @@ int get_sem_free_idx()
 
   return -1;
 }
+
+int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
+    struct list_head *lhcurrent = NULL;
+    union task_union *new_thread;
+    
+    if (list_empty(&freequeue)) return -ENOMEM;
+
+    lhcurrent = list_first(&freequeue);
+    list_del(lhcurrent);
+    new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
+    copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
+
+    add_dir_reference(new_thread);
+
+    void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
+    unsigned int *stack_ptr = stack_base;
+
+    stack_ptr -= 1;
+    *(stack_ptr) = *((unsigned int*)parameter); 
+    stack_ptr -= 1;
+    *stack_ptr = 0;
+    //*(stack_ptr) = *((unsigned int*)parameter); 
+    // *(DWord *)(stack_ptr) = (DWord)5; 
+    // stack_ptr -= sizeof(DWord);
+    // *(DWord *)(stack_ptr) = (DWord)10; 
+
+    new_thread->task.user_stack_base = stack_base;
+    new_thread->task.num_stack_pages = N;
+    new_thread->task.TID = global_TID++;
+    new_thread->task.state = ST_READY;
+
+    new_thread->stack[KERNEL_STACK_SIZE-2] = (unsigned int)stack_ptr;
+    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)function;
+
+    int register_ebp = (int) get_ebp();
+    register_ebp = (register_ebp - (int)current()) + (int)(new_thread);
+    new_thread->task.register_esp = register_ebp + sizeof(DWord);
+
+    DWord temp_ebp = *(DWord *)register_ebp;
+    new_thread->task.register_esp -= sizeof(DWord);
+    *(DWord *)(new_thread->task.register_esp) = (DWord)&ret_from_fork;
+    new_thread->task.register_esp -= sizeof(DWord);
+    *(DWord *)(new_thread->task.register_esp) = temp_ebp;
+
+    list_add_tail(&new_thread->task.list_thread, &current()->threads);
+    list_add_tail(&new_thread->task.list, &readyqueue);
+
+    return new_thread->task.TID;
+}
+
+
+
+

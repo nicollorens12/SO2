@@ -30,11 +30,15 @@ int yield();
 
 int get_stats(int pid, struct stats *st);
 
+int sys_getKey(char* b, int timeout);
+
 int gotoXY(int x, int y);
 
 int changeColor(int fg, int bg);
 
 int clrscr(char* b);
+
+int threadCreateWithStack( void (*function)(void* arg), int N, void* parameter );
 
 struct sem_t* semCreate(int initial_value);
 

@@ -25,5 +25,9 @@
 
 #define PH_PAGE(x) (x>>12)
 
+#define USER_STACK_BASE (L_USER_START + (NUM_PAG_CODE + NUM_PAG_DATA) * PAGE_SIZE)
+#define USER_STACK_BASE_PAGES (NUM_PAG_CODE + NUM_PAG_DATA)
+
+
 #endif
 

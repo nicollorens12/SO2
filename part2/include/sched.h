@@ -21,14 +21,21 @@ enum wake_t {SEM_SIG, SEM_DES};
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
+  int TID;      /* Thread ID */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;	/* Task struct enqueuing */
   struct list_head list_ordered; /* Task struct for ordered list */
-  int register_esp;		/* position in the stack */
+  int register_esp;		/* position in the system stack */
   enum state_t state;		/* State of the process */
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
   int expiring_time;
+
+  /* Nuevo para threads */
+  void *user_stack_base;       /* Dirección base del stack del usuario */
+  int num_stack_pages;         /* Número de páginas del stack dinámico (N)*/
+  struct list_head threads;     /* Lista de threads del proceso */
+  struct list_head list_thread;  /* Entrada de la lista de threads del proceso*/
   int wake_reason; 
 };
 

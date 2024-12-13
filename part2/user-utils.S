@@ -160,6 +160,28 @@ ENTRY(clrscr)
 	popl %ebp
 	ret
 
+/**
+int threadCreateWithStack( void (*function)(void* arg), int N,
+void* parameter )
+**/
+ENTRY(threadCreateWithStack)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+
+	movl $5, %eax
+	movl 0x8(%ebp), %ebx;	//function
+	movl 0xC(%ebp), %ecx;	//N
+	movl 0x10(%ebp), %edx;	//parameter
+
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+
 /* sem_t* semCreate(int initial_value) */
 ENTRY(semCreate)
 	pushl %ebp

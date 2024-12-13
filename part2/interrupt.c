@@ -88,7 +88,6 @@ void check_getKey_timeouts(){
       if(task->expiring_time <= zeos_ticks){
         task->expiring_time = -1;
         list_del(&task->list_ordered);
-        //Hay que eliminar de la key_blockedqueue tambien
         update_process_state_rr(task, &readyqueue);
       }
       else break;

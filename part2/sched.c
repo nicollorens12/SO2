@@ -29,7 +29,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 #endif
 
 extern struct list_head blocked;
-
+extern int global_TID;
 // Free task structs
 struct list_head freequeue;
 // Ready queue
@@ -40,6 +40,8 @@ struct list_head  key_blockedqueue;
 struct list_head getKeyBlocked;
 
 int pending_key = 0;
+
+extern void* allocate_user_stack(int N, page_table_entry *process_PT);
 
 // Sem list
 struct sem_t sem_list[NUM_SEM];
@@ -73,16 +75,50 @@ page_table_entry * get_PT (struct task_struct *t)
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
+int task_directories[NR_TASKS];
+
+int get_dir_pos(struct task_struct *t) 
+{
+  return (t->dir_pages_baseAddr - (page_table_entry *) &dir_pages[0]) / sizeof(page_table_entry);
+}
+
+int check_dir_references(struct task_struct *t) 
+{
+  return task_directories[get_dir_pos(t)];
+}
+
+int reduce_dir_reference(struct task_struct *t) 
+{
+  int pos = get_dir_pos(t);
+  task_directories[pos] -= 1;
+  return 1;
+}
+
+int add_dir_reference(struct task_struct *t) 
+{
+  task_directories[get_dir_pos(t)] += 1;
+  return 1;
+}
 
 int allocate_DIR(struct task_struct *t) 
 {
-	int pos;
+   int i = 0;
+   while(task_directories[i] != 0 && i < NR_TASKS) {
+     i++;
+   }
+   if(i == NR_TASKS) return -1;
+   task_directories[i] = 1;
+   t->dir_pages_baseAddr = (page_table_entry *) &dir_pages[i];
 
-	pos = ((int)t-(int)task)/sizeof(union task_union);
+   return 1;
 
-	t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+  //int pos;
 
-	return 1;
+  //  pos = ((int)t-(int)task)/sizeof(union task_union);
+
+  //  t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
+
+  //  return 1;
 }
 
 void cpu_idle(void)
@@ -182,9 +218,14 @@ void init_idle (void)
   union task_union *uc = (union task_union*)c;
 
   c->PID=0;
-
+  c->TID=global_TID++;
   c->total_quantum=DEFAULT_QUANTUM;
   c->expiring_time = -1;
+  INIT_LIST_HEAD(&c->threads);
+
+  // Configurar stack de usuario y registro CR3
+  c->user_stack_base = NULL;
+  c->num_stack_pages = 0;
   
   init_stats(&c->p_stats);
 
@@ -202,31 +243,37 @@ void setMSR(unsigned long msr_number, unsigned long high, unsigned long low);
 
 void init_task1(void)
 {
+  // Obtener una entrada de la freequeue
   struct list_head *l = list_first(&freequeue);
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   union task_union *uc = (union task_union*)c;
 
-  c->PID=1;
-
-  c->total_quantum=DEFAULT_QUANTUM;
-
-  c->state=ST_RUN;
+  c->PID = 1;  // PID del proceso init
+  c->TID = global_TID++;  // TID del thread
+  c->total_quantum = DEFAULT_QUANTUM;
+  c->state = ST_RUN;  // El thread inicial comienza en ejecución
   c->expiring_time = -1;
+  INIT_LIST_HEAD(&c->threads);  // Inicializar lista de threads
+  remaining_quantum = c->total_quantum;  // Configurar el quantum restante
+  init_stats(&c->p_stats);              // Inicializar estadísticas
 
-  remaining_quantum=c->total_quantum;
+  // Asignar directorio de páginas y configurar memoria
+  allocate_DIR(c);  // Asignar tabla de páginas
+  set_user_pages(c);  // Configurar páginas de usuario para init
 
-  init_stats(&c->p_stats);
-
-  allocate_DIR(c);
-
-  set_user_pages(c);
-
+  // Configurar stack del kernel
   tss.esp0=(DWord)&(uc->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
-  set_cr3(c->dir_pages_baseAddr);
+  // Configurar stack de usuario y registro CR3
+  //c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
+  //c->num_stack_pages = 1;
+  //c->register_esp = c->user_stack_base;
+
+  set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
+
 
 void init_freequeue()
 {
@@ -250,6 +297,10 @@ void init_sched()
   INIT_LIST_HEAD(&key_blockedqueue);
   INIT_LIST_HEAD(&getKeyBlocked);
 
+  for(int i = 0; i < NR_TASKS; i++) {
+    task_directories[i] = 0;
+  }
+
   init_sem_list();
 }
 
@@ -268,16 +319,26 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 /* Do the magic of a task switch */
 void inner_task_switch(union task_union *new)
 {
-  page_table_entry *new_DIR = get_DIR(&new->task);
+  if(new->task.PID == current()->PID){ //Thread Switch
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  /* Update TSS and MSR to make it point to the new stack */
-  tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
-  setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  }
+  else{ // Task Switch
+    page_table_entry *new_DIR = get_DIR(&new->task);
 
-  /* TLB flush. New address space */
-  set_cr3(new_DIR);
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  switch_stack(&current()->register_esp, new->task.register_esp);
+    /* TLB flush. New address space */
+    set_cr3(new_DIR);
+
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  }
+  
 }
 
 
