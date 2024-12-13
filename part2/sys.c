@@ -212,8 +212,8 @@ int sys_fork(void)
   INIT_LIST_HEAD(&uchild->task.threads);
 
   /* Prepare child stack */ // S'ha de fer? Potser no cal
-  uchild->task.user_stack_base = allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
-  uchild->task.num_stack_pages = 1;
+  uchild->task.user_stack_base = NULL; //allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
+  uchild->task.num_stack_pages = 0;
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -295,6 +295,16 @@ void sys_exit()
     {
       free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
       del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+    }
+
+    // Deallocate all heap (USER DYNAMIC STACKS)
+    for (i = NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA; i < TOTAL_PAGES; ++i)
+    {
+      if (is_page_used(process_PT, i))
+      {
+        free_frame(get_frame(process_PT, i));
+        del_ss_pag(process_PT, i);   
+      }
     }
     
   }
