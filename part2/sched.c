@@ -43,6 +43,15 @@ int pending_key = 0;
 
 extern void* allocate_user_stack(int N, page_table_entry *process_PT);
 
+// Sem list
+struct sem_t sem_list[NUM_SEM];
+
+void init_sem_list()
+{
+  for (int i = 0; i < NUM_SEM; ++i)
+    sem_list[i].TID = -1;
+}
+
 void init_stats(struct stats *s)
 {
 	s->user_ticks = 0;
@@ -291,6 +300,8 @@ void init_sched()
   for(int i = 0; i < NR_TASKS; i++) {
     task_directories[i] = 0;
   }
+
+  init_sem_list();
 }
 
 struct task_struct* current()

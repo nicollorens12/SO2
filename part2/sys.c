@@ -19,6 +19,8 @@
 
 #include <interrupt.h>
 
+#include <sem.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
@@ -28,6 +30,7 @@ extern struct list_head key_blockedqueue;
 extern struct list_head threads;
 
 extern int pending_key;
+extern struct sem_t sem_list[NUM_SEM];
 
 void * get_ebp();
 
@@ -294,6 +297,14 @@ int sys_gettime()
 
 void sys_exit()
 {  
+  // Si soc el propietari d'un semafor sys_semDestroy
+  /**
+   * for(int i = 0; i < NUM_SEM; ++i){
+   *  sem_list[i].TID == current()->TID;
+   *  sys_semDestroy(&sem_list[i])
+   * }
+    
+  */
   int i;
   reduce_dir_reference(current());
 
@@ -420,26 +431,119 @@ int sys_changeColor(int fg, int bg)
 int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
-  if ( b < L_USER_START || (b + sizeof(b)) > USER_ESP)
-    return EFAULT;  /* Bad address */
-
-  // Moure el cursor a l'inici de la pantalla
-  move_cursor(0, 0);
-
-  for (int i = 0; i < 25; ++i)
+  if ( !access_ok(VERIFY_WRITE, b, 80 * 25 * 2) )
+    return -EFAULT;  /* Bad address */
+  
+  if (b != NULL)
+    dump_to_screen(b);
+  else
   {
-    for (int j = 0; j < 80; ++j)
-    {
-      if (b != NULL)
-        // Suposant que la matriu es guarda per files: desplacament de fila + access columna
-        // Part alta: color; Part baixa: char
-        printc_raw(b[i*80*2 + j*2 + 1] << 8 | b[i*80*2 + j*2 + 0]); 
-      else 
-        printc_raw(0);
-    }
+    // Moure el cursor a l'inici de la pantalla
+    move_cursor(0, 0);  
+    // Posem colors a negre
+    change_color(0, 0);
+
+    // Pintem totes les posicions buides
+    for (int i = 0; i < 25; ++i)
+      for (int j = 0; j < 80; ++j)
+        printc(' ');
+  }
+  return 1;
+}
+
+// Necessito una estructura per guardar semafors --> Array
+// Pero quantes entrades necessito
+// Tambe haure de saber quins estan lliures i no --> etc
+// Cerca de lliures 
+// Inicialitzar semafors !!! --> Compte amb la llista
+// --temp-- Nomes treballare amb el semafor 0
+
+struct sem_t* sys_semCreate(int initial_value)
+{
+    // Habra que buscar uno libre --> si no hay uno libre devolver error
+    int i = get_sem_free_idx();
+    if (i == -1)
+    //  return -ESEMNOSPC;
+      return NULL;
+    
+    struct sem_t *s = &sem_list[i];
+    //s->TID = current()->TID;
+    s->count = initial_value;
+    INIT_LIST_HEAD(&s->blocked);
+
+    return s;
+}
+
+int sys_semWait(struct sem_t* s)
+{
+  // Addresa dins de la zona de memoria de la llista 
+  /*
+    comprobar adresa dins de la llista
+    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  */
+  --(s->count);
+  if (s->count < 0)
+  {
+    list_add_tail(&current()->list, &s->blocked);
+    sched_next_rr();
+
   }
 
   return 1;
+}
+
+int sys_semSignal(struct sem_t* s){ // Haig de guardar a la tcb si estic despert per un signal o per un destory
+  //Comprabar rang adreces
+  /*
+    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  */
+
+  ++(s->count);
+  if (s->count <= 0)
+  {
+    struct list_head *l = list_first( &(s->blocked) );
+    list_del(l);
+    struct task_struct *t = list_head_to_task_struct(l);
+    t->wake_reason = SEM_SIG;
+    list_add_tail(&t->list, &readyqueue);
+  }
+
+  return 1;
+}
+
+int sys_semDestroy(struct sem_t* s)
+{
+  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
+  // o del que no es del mismo proceso --> ERROR
+  // ?? Mejor anyadir PID como campo de sem
+  //if (current()->TID != s->TID )
+  //  return -ESEMNOPRP;
+
+  s->TID = -1;
+  s->count = 0;
+
+  struct list_head *l = &s->blocked;
+
+  struct list_head *pos, *n;
+  list_for_each_safe(pos, n, l)
+  {
+      list_del(pos);
+      struct task_struct *t = list_head_to_task_struct(l);
+      t->wake_reason = SEM_DES;
+      list_add_tail(&t->list, &readyqueue);
+  }
+
+  return 1;
+}
+
+// Si no hay semaforos libres devuelve -1
+int get_sem_free_idx()
+{
+  for (int i = 0; i < NUM_SEM; ++i)
+    if (sem_list[i].TID == -1)
+      return i;
+
+  return -1;
 }
 
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {

@@ -182,6 +182,62 @@ ENTRY(threadCreateWithStack)
 	ret
 
 
+/* sem_t* semCreate(int initial_value) */
+ENTRY(semCreate)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $30, %eax
+	movl 0x8(%ebp), %ebx;	//int initial_value
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int semWait(sem_t* s); */
+ENTRY(semWait)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $31, %eax
+	movl 0x8(%ebp), %ebx;	//sem_t* s
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int semSignal(sem_t* s); */
+ENTRY(semSignal)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $32, %eax
+	movl 0x8(%ebp), %ebx;	//sem_t* s
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int semDestroy(sem_t* s); */
+ENTRY(semDestroy)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $33, %eax
+	movl 0x8(%ebp), %ebx;	//sem_t* s
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
 ENTRY(SAVE_REGS)
       pushl %eax
       movl %eax, REGS    //SAVE EAX

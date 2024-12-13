@@ -32,10 +32,10 @@ ENTRY (sys_call_table)
 	.long sys_clrscr	//27
 	.long sys_ni_syscall	//28
 	.long sys_ni_syscall	//29
-	.long sys_ni_syscall	//30
-	.long sys_ni_syscall	//31
-	.long sys_ni_syscall	//32
-	.long sys_ni_syscall	//33
+	.long sys_semCreate	//30
+	.long sys_semWait	//31
+	.long sys_semSignal	//32
+	.long sys_semDestroy	//33
 	.long sys_getKey		//34
 	.long sys_get_stats		//35
 .globl MAX_SYSCALL
