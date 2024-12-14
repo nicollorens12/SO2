@@ -117,3 +117,13 @@ sysenter_fin:
 	movl 12(%esp), %ecx	      // User stack address
 	sti
 	sysexit
+
+ENTRY(new_page_fault_handler)
+    SAVE_ALL 
+    # EOI no possar (comentat per Juanjo)
+    pushl 48(%esp) # Passem parametre (valor de eip --> Adresa erronia)
+    call new_page_fault_routine
+    # No es necesari fer res perque es quedara en un bucle infinit --> Igualment ho posso
+    # ADDL $8, %ESP  // En teoria caldria desempilar el parametre i ERROR
+    RESTORE_ALL 
+    iret

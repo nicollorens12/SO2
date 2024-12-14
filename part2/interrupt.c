@@ -14,6 +14,9 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
+void new_page_fault_handler();
+
+
 
 extern struct list_head key_blockedqueue; //FIFO List mantain order of getKey call
 extern struct list_head getKeyBlocked;  //Ordered list by expring time
@@ -192,11 +195,55 @@ void setIdt()
   set_handlers();
 
   /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
+  setInterruptHandler(14, new_page_fault_handler, 3);
+
   setInterruptHandler(32, clock_handler, 0);
   setInterruptHandler(33, keyboard_handler, 0);
 
   setSysenter();
 
   set_idt_reg(&idtR);
+}
+
+void itohex(int a, char *b)
+{
+  int i, i1, digit;
+  char c;
+  
+  if (a==0) { b[0]='0'; b[1]=0; return ;}
+  
+  i=0;
+  while (a>0)
+  {
+    digit=(a%16);
+    a=a/16;
+
+    if (digit < 10)
+      b[i] = digit + '0';
+    else
+      b[i] = 'A' + digit - 10;
+
+    i++;
+  }
+  
+  for (i1=0; i1<i/2; i1++)
+  {
+    c=b[i1];
+    b[i1]=b[i-i1-1];
+    b[i-i1-1]=c;
+  }
+  b[i]=0;
+}
+
+void new_page_fault_routine(int address) {
+  printk("\nProcess generates a PAGE FAULT exception at EIP: 0x");
+
+  char buff[256];
+  itohex(address, buff);
+  printk(buff);
+
+  printk("\n");
+
+  while(1);
 }
 

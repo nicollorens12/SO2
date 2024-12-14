@@ -41,8 +41,6 @@ struct list_head getKeyBlocked;
 
 int pending_key = 0;
 
-extern void* allocate_user_stack(int N, page_table_entry *process_PT);
-
 // Sem list
 struct sem_t sem_list[NUM_SEM];
 
@@ -75,50 +73,54 @@ page_table_entry * get_PT (struct task_struct *t)
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
-int task_directories[NR_TASKS];
+struct directory_references{  
+  int references;
+  page_table_entry *dir;
+};
 
-int get_dir_pos(struct task_struct *t) 
+struct directory_references task_directories[NR_TASKS];
+
+int get_dir_pos(struct task_struct *t) // The entry should already be existing, else returns -1
 {
-  return (t->dir_pages_baseAddr - (page_table_entry *) &dir_pages[0]) / sizeof(page_table_entry);
+  for(int i = 0; i < NR_TASKS; i++) {
+    if(task_directories[i].dir == t->dir_pages_baseAddr) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 int check_dir_references(struct task_struct *t) 
 {
-  return task_directories[get_dir_pos(t)];
+  return task_directories[get_dir_pos(t)].references;
 }
 
 int reduce_dir_reference(struct task_struct *t) 
 {
   int pos = get_dir_pos(t);
-  task_directories[pos] -= 1;
+  task_directories[pos].references -= 1;
   return 1;
 }
 
 int add_dir_reference(struct task_struct *t) 
 {
-  task_directories[get_dir_pos(t)] += 1;
+  int index = get_dir_pos(t);
+  if(index == -1) return -1;
+  task_directories[index].references += 1;
   return 1;
 }
 
 int allocate_DIR(struct task_struct *t) 
 {
    int i = 0;
-   while(task_directories[i] != 0 && i < NR_TASKS) {
+   while(task_directories[i].references != 0 && i < NR_TASKS) {
      i++;
    }
    if(i == NR_TASKS) return -1;
-   task_directories[i] = 1;
+   task_directories[i].references = 1;
    t->dir_pages_baseAddr = (page_table_entry *) &dir_pages[i];
-
+   task_directories[i].dir = t->dir_pages_baseAddr;
    return 1;
-
-  //int pos;
-
-  //  pos = ((int)t-(int)task)/sizeof(union task_union);
-
-  //  t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
-
-  //  return 1;
 }
 
 void cpu_idle(void)
@@ -266,10 +268,8 @@ void init_task1(void)
   tss.esp0=(DWord)&(uc->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
-  // Configurar stack de usuario y registro CR3
-  //c->user_stack_base = allocate_user_stack(1, c->dir_pages_baseAddr); // Asignar stack de usuario
-  //c->num_stack_pages = 1;
-  //c->register_esp = c->user_stack_base;
+  c->user_stack_base = NULL;
+  c->num_stack_pages = 0;
 
   set_cr3(c->dir_pages_baseAddr);         // Activar la tabla de páginas
 }
@@ -298,7 +298,8 @@ void init_sched()
   INIT_LIST_HEAD(&getKeyBlocked);
 
   for(int i = 0; i < NR_TASKS; i++) {
-    task_directories[i] = 0;
+    task_directories[i].references = 0;
+    task_directories[i].dir = NULL;
   }
 
   init_sem_list();

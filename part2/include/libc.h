@@ -22,6 +22,8 @@ void perror();
 
 int getpid();
 
+int gettid();
+
 int fork();
 
 void exit();

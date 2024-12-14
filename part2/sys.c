@@ -61,6 +61,10 @@ int sys_getpid()
 	return current()->PID;
 }
 
+int sys_gettid(){
+  return current()->TID;
+}
+
 int global_PID=1000;
 int global_TID=0;
 
@@ -69,55 +73,55 @@ int ret_from_fork()
   return 0;
 }
 
-void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
-    if(N > NUM_PAG_DATA) return -1;
-    int space = 0;
-    
+__attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
+  if(N > NUM_PAG_DATA) return -1;
+  int space = 0;
+  
 
-    int new_ph_pag, pag, i;
-    for(int pag = PAG_LOG_INIT_DATA+NUM_PAG_DATA; pag < TOTAL_PAGES; pag++) {
-        if(is_page_used(process_PT, pag) == 0){
-            if(N == 1){
-                space = 1;
-            }
-            else{
-                int pag_aux = pag;
-                while(pag_aux < N - 1){
-                    if(is_page_used(process_PT, pag_aux) == 0){
-                      pag_aux++;
-                      space = 1;
-                    }
-                    else{
-                      pag = pag_aux + 1;
-                      break;
-                    }
-                }
-            }
-            
+  int new_ph_pag, pag, i;
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+    if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag) == 0){
+      if(N == 1){
+        space = 1;
+      }
+      else{
+        int pag_aux = pag;
+        while(pag_aux < N - 1){
+          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+            pag_aux++;
+            space = 1;
+          }
+          else{
+            pag = pag_aux + 1;
+            break;
+          }
         }
-        if(space){
-            for(i = pag; i < pag + N; i++){
-                int new_ph_pag=alloc_frame();
-                if (new_ph_pag!=-1) /* One page allocated */
-                {
-                  set_ss_pag(process_PT, pag, new_ph_pag);
-                }
-                else /* No more free pages left. Deallocate everything */
-                {
-                  /* Deallocate allocated pages. Up to pag. */
-                  for (i=0; i<pag; i++)
-                  {
-                    del_ss_pag(process_PT, i);
-                  }
-                  
-                  /* Return error */
-                  return -EAGAIN; 
-                }
-            }
-            return (void*)((pag + N - 1) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
-        }   
+      }
+      
     }
-    return NULL;
+    if(space){
+      for(i = pag; i < pag + N; i++){
+        int new_ph_pag=alloc_frame();
+        if (new_ph_pag!=-1) /* One page allocated */
+        {
+          set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
+        }
+        else /* No more free pages left. Deallocate everything */
+        {
+          /* Deallocate allocated pages. Up to pag. */
+          for (i=0; i<pag; i++)
+          {
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+          }
+          
+          /* Return error */
+          return -EAGAIN; 
+        }
+      }
+      return (void*)((PAG_LOG_INIT_HEAP+pag + N) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
+    }   
+  }
+  return NULL;
 }
 
 int sys_fork(void)
@@ -231,7 +235,7 @@ int sys_fork(void)
   INIT_LIST_HEAD(&uchild->task.threads);
 
   /* Prepare child stack */ // S'ha de fer? Potser no cal
-  uchild->task.user_stack_base = NULL; //allocate_user_stack(1, uchild->task.dir_pages_baseAddr); // Asignar stack de usuario
+  uchild->task.user_stack_base = NULL; 
   uchild->task.num_stack_pages = 0;
 
   int register_ebp;		/* frame pointer */
@@ -298,13 +302,12 @@ int sys_gettime()
 void sys_exit()
 {  
   // Si soc el propietari d'un semafor sys_semDestroy
-  /**
-   * for(int i = 0; i < NUM_SEM; ++i){
-   *  sem_list[i].TID == current()->TID;
-   *  sys_semDestroy(&sem_list[i])
-   * }
-    
-  */
+  
+  for(int i = 0; i < NUM_SEM; ++i){
+    sem_list[i].TID == current()->TID;
+    sys_semDestroy(&sem_list[i]);
+  }
+
   int i;
   reduce_dir_reference(current());
 
@@ -451,23 +454,15 @@ int sys_clrscr(char* b)
   return 1;
 }
 
-// Necessito una estructura per guardar semafors --> Array
-// Pero quantes entrades necessito
-// Tambe haure de saber quins estan lliures i no --> etc
-// Cerca de lliures 
-// Inicialitzar semafors !!! --> Compte amb la llista
-// --temp-- Nomes treballare amb el semafor 0
-
 struct sem_t* sys_semCreate(int initial_value)
 {
     // Habra que buscar uno libre --> si no hay uno libre devolver error
     int i = get_sem_free_idx();
     if (i == -1)
-    //  return -ESEMNOSPC;
       return NULL;
     
     struct sem_t *s = &sem_list[i];
-    //s->TID = current()->TID;
+    s->TID = current()->TID;
     s->count = initial_value;
     INIT_LIST_HEAD(&s->blocked);
 
@@ -477,10 +472,8 @@ struct sem_t* sys_semCreate(int initial_value)
 int sys_semWait(struct sem_t* s)
 {
   // Addresa dins de la zona de memoria de la llista 
-  /*
-    comprobar adresa dins de la llista
-    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
-  */
+  if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  
   --(s->count);
   if (s->count < 0)
   {
@@ -492,11 +485,10 @@ int sys_semWait(struct sem_t* s)
   return 1;
 }
 
-int sys_semSignal(struct sem_t* s){ // Haig de guardar a la tcb si estic despert per un signal o per un destory
+int sys_semSignal(struct sem_t* s){
   //Comprabar rang adreces
-  /*
-    if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
-  */
+  if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+
 
   ++(s->count);
   if (s->count <= 0)
@@ -513,11 +505,8 @@ int sys_semSignal(struct sem_t* s){ // Haig de guardar a la tcb si estic despert
 
 int sys_semDestroy(struct sem_t* s)
 {
-  // Si se guarda el usuario la direccion de un semaforo que  ya se ha eliminado,
-  // o del que no es del mismo proceso --> ERROR
-  // ?? Mejor anyadir PID como campo de sem
-  //if (current()->TID != s->TID )
-  //  return -ESEMNOPRP;
+  if (current()->TID != s->TID ) // Comprobar si el proceso en curso es el propietario del semaforo y por tanto, lo puede destruir
+    return -ESEMNOPRP;
 
   s->TID = -1;
   s->count = 0;
@@ -557,19 +546,16 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
     copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
 
-    add_dir_reference(new_thread);
+    
+    if(add_dir_reference(new_thread) == -1) return -ENOMEM;
 
     void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
     unsigned int *stack_ptr = stack_base;
 
-    stack_ptr -= 1;
+    stack_ptr -= 4;
     *(stack_ptr) = *((unsigned int*)parameter); 
-    stack_ptr -= 1;
+    stack_ptr -= 4;
     *stack_ptr = 0;
-    //*(stack_ptr) = *((unsigned int*)parameter); 
-    // *(DWord *)(stack_ptr) = (DWord)5; 
-    // stack_ptr -= sizeof(DWord);
-    // *(DWord *)(stack_ptr) = (DWord)10; 
 
     new_thread->task.user_stack_base = stack_base;
     new_thread->task.num_stack_pages = N;
