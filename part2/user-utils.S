@@ -247,6 +247,34 @@ ENTRY(semDestroy)
 	popl %ebp
 	ret
 
+/* char* memRegGet(int num_pages) */
+ENTRY(memRegGet)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $14, %eax
+	movl 0x8(%ebp), %ebx;	//num_pages
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/*int memRegDel(char* m)*/
+ENTRY(memRegDel)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $15, %eax
+	movl 0x8(%ebp), %ebx;	//m
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
 ENTRY(SAVE_REGS)
       pushl %eax
       movl %eax, REGS    //SAVE EAX

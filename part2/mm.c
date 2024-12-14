@@ -276,3 +276,7 @@ void set_page_used(page_table_entry *PT, unsigned page){
 void set_page_free(page_table_entry *PT, unsigned page){
   PT[page].bits.present = 0;
 }
+
+int check_is_page_spacing(page_table_entry *PT, unsigned page){
+  return PT[page].bits.rw;
+}
