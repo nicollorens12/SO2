@@ -38,34 +38,13 @@ int __attribute__ ((__section__(".text.main")))
   main(void)
 {
   char buff[512]= "\nI'm the main thread\n";
-   write(1, buff, strlen(buff));
 
-  char *reg = memRegGet(4);
-  char *reg_aux1, *reg_aux2, *reg_aux3;
-  reg_aux1 = reg;
-  reg_aux2 = reg + 1;
-  reg_aux3 = reg + 2001;
+  int pid = fork();
 
-  *reg_aux1 = 'a';
-  write(1, reg_aux1, 1); // Write 'a'
-  (*reg_aux2) = 'b';
-  (*reg_aux3) = 'c';
-
+  int param = 10; // Si es necesario pasar un entero como parámetro
   
-  write(1, "\n", 1);
-  write(1, reg_aux2, 1); // Write 'b'
-  write(1, "\n", 1);
-  write(1, reg_aux3, 1); // Write 'c'
-  write(1, "\n", 1);
-
-  memRegDel(reg);
-
-  reg_aux1 = 'k';
-  write(1, reg_aux1, 1); // Write 'a'
-
-
-
-  
+  int t = threadCreateWithStack(thread_sem_creator, 1, &param);
+  write(1, buff, strlen(buff));
   while(1) { 
     
   }
