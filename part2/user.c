@@ -41,20 +41,27 @@ int __attribute__ ((__section__(".text.main")))
    write(1, buff, strlen(buff));
 
   char *reg = memRegGet(4);
-  char *reg_aux = reg;
-  *reg_aux = 'a';
-  write(1, reg, 1); // Write 'a'
-  reg_aux++;
-  (*reg_aux) = 'b';
-  reg_aux += 2000;
-  (*reg_aux) = 'c';
+  char *reg_aux1, *reg_aux2, *reg_aux3;
+  reg_aux1 = reg;
+  reg_aux2 = reg + 1;
+  reg_aux3 = reg + 2001;
+
+  *reg_aux1 = 'a';
+  write(1, reg_aux1, 1); // Write 'a'
+  (*reg_aux2) = 'b';
+  (*reg_aux3) = 'c';
 
   
   write(1, "\n", 1);
-  write(1, reg + 1, 1); // Write 'b'
+  write(1, reg_aux2, 1); // Write 'b'
   write(1, "\n", 1);
-  write(1, reg + 2000, 1); // Write 'c'
+  write(1, reg_aux3, 1); // Write 'c'
   write(1, "\n", 1);
+
+  memRegDel(reg);
+
+  write(1, reg_aux1, 1); // Write 'a'
+
 
 
   

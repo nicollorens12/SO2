@@ -585,7 +585,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 char* sys_memRegGet(int num_pages) {
   if(num_pages > NUM_PAG_DATA) return -1;
   int space = 0;
-  page_table_entry * process_PT = current()->dir_pages_baseAddr;
+  page_table_entry * process_PT = get_PT(current());
 
   int new_ph_pag, pag, i;
   for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
@@ -636,7 +636,7 @@ char* sys_memRegGet(int num_pages) {
 
 
 int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, que al final de la region tenga un pagina extra con present = 1 pero rw = 0
-  page_table_entry * process_PT = current()->dir_pages_baseAddr;
+  page_table_entry * process_PT = get_PT(current());
   int pag = ((int)m) >> 12;
   if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
   if(is_page_used(process_PT, pag) == 0) return -1;
