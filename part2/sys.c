@@ -640,14 +640,17 @@ int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, q
   int pag = ((int)m) >> 12;
   if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
   if(is_page_used(process_PT, pag) == 0) return -1;
-  int i = 1;
+  int i = 0;
+
   while(is_page_used(process_PT, pag + i) && !check_is_page_spacing(process_PT, pag + i)) ++i;
+  
   if(pag + i >= TOTAL_PAGES) return -1;
   for(int j = 0; j < i; j++){
     free_frame(get_frame(process_PT, pag + j));
     del_ss_pag(process_PT, pag + j);
   }
-  set_page_free(process_PT, pag + i + 1);
+  set_page_free(process_PT, pag + i);
+  del_ss_pag(process_PT, pag + i);
   return 1;
 }
 

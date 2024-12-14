@@ -60,6 +60,7 @@ int __attribute__ ((__section__(".text.main")))
 
   memRegDel(reg);
 
+  reg_aux1 = 'k';
   write(1, reg_aux1, 1); // Write 'a'
 
 

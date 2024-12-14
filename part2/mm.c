@@ -277,5 +277,5 @@ void set_page_free(page_table_entry *PT, unsigned page){
 }
 
 int check_is_page_spacing(page_table_entry *PT, unsigned page){
-  return PT[page].bits.rw;
+  return !PT[page].bits.rw;
 }
