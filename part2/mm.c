@@ -253,7 +253,6 @@ void set_ss_pag(page_table_entry *PT, unsigned page,unsigned frame)
 	PT[page].bits.user=1;
 	PT[page].bits.rw=1;
 	PT[page].bits.present=1;
-
 }
 
 /* del_ss_pag - Removes mapping from logical page 'logical_page' */
@@ -265,4 +264,18 @@ void del_ss_pag(page_table_entry *PT, unsigned logical_page)
 /* get_frame - Returns the physical frame associated to page 'logical_page' */
 unsigned int get_frame (page_table_entry *PT, unsigned int logical_page){
      return PT[logical_page].bits.pbase_addr; 
+}
+
+int is_page_used(page_table_entry *PT, unsigned page){
+  return PT[page].bits.present;
+}
+void set_page_used(page_table_entry *PT, unsigned page){
+  PT[page].bits.present = 1;
+}
+void set_page_free(page_table_entry *PT, unsigned page){
+  PT[page].bits.present = 0;
+}
+
+int check_is_page_spacing(page_table_entry *PT, unsigned page){
+  return !PT[page].bits.rw;
 }

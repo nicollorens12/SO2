@@ -5,6 +5,7 @@
 
 struct sem_t
 {
+	int TID; // -1 iniciarlo
 	int count;
 	struct list_head blocked;
 };

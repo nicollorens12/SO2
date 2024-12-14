@@ -148,6 +148,7 @@ typedef union
     unsigned int global   : 1;
     unsigned int avail    : 3;
     unsigned int pbase_addr : 20;
+    
   } bits;
 } page_table_entry;
 
