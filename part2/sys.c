@@ -549,12 +549,15 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     
     if(add_dir_reference(new_thread) == -1) return -ENOMEM;
 
-    void *stack_base = allocate_user_stack(N, current()->dir_pages_baseAddr); 
+
+    page_table_entry *process_PT = get_PT(current());
+
+    void *stack_base = allocate_user_stack(N, process_PT); 
     unsigned int *stack_ptr = stack_base;
 
-    stack_ptr -= 4;
+    stack_ptr -= 1;
     *(stack_ptr) = *((unsigned int*)parameter); 
-    stack_ptr -= 4;
+    stack_ptr -= 1;
     *stack_ptr = 0;
 
     new_thread->task.user_stack_base = stack_base;

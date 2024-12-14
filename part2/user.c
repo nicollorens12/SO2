@@ -39,7 +39,7 @@ int __attribute__ ((__section__(".text.main")))
 {
   char buff[512]= "\nI'm the main thread\n";
 
-  //int pid = fork();
+  int pid = fork();
 
   int param = 10; // Si es necesario pasar un entero como parámetro
   
