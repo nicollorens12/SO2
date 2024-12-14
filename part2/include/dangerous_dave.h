@@ -5,8 +5,15 @@
 #ifndef __DANGEROUS_DAVE_H__
 #define __DANGEROUS_DAVE_H__
 
-void draw_map();
+void dangerous_dave();
 
-void draw_player();
+/* ------ */
+/* STATIC */
+/* ------ */
+
+
+static void draw_map();
+
+static void draw_player();
 
 #endif  /* __DANGEROUS_DAVE_H__ */
