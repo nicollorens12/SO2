@@ -101,7 +101,7 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
     }
     if(space){
       for(i = pag; i < pag + N; i++){
-        int new_ph_pag=alloc_frame();
+        new_ph_pag=alloc_frame();
         if (new_ph_pag!=-1) /* One page allocated */
         {
           set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
@@ -582,6 +582,79 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     list_add_tail(&new_thread->task.list, &readyqueue);
 
     return new_thread->task.TID;
+}
+
+
+char* sys_memRegGet(int num_pages) {
+  if(num_pages > NUM_PAG_DATA) return -1;
+  int space = 0;
+  page_table_entry * process_PT = get_PT(current());
+
+  int new_ph_pag, pag, i;
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+    if(is_page_used(process_PT ,PAG_LOG_INIT_HEAP+pag) == 0){
+      if(num_pages == 1){
+        space = 1;
+      }
+      else{
+        int pag_aux = pag;
+        while(pag_aux < num_pages - 1){
+          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+            pag_aux++;
+            space = 1;
+          }
+          else{
+            pag = pag_aux + 1;
+            break;
+          }
+        }
+      }
+      
+    }
+    if(space){
+      for(i = pag; i < pag + num_pages; i++){
+        new_ph_pag=alloc_frame();
+        if (new_ph_pag!=-1) /* One page allocated */
+        {
+          set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
+        }
+        else /* No more free pages left. Deallocate everything */
+        {
+          /* Deallocate allocated pages. Up to pag. */
+          for (i=0; i<pag; i++)
+          {
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+          }
+          
+          /* Return error */
+          return -EAGAIN; 
+        }
+      }
+      set_page_used(process_PT, PAG_LOG_INIT_HEAP+ num_pages); // Añade una pagina extra como marcador, para evitar que se solapen con present = 1 pero rw = 0
+      return (char*)((PAG_LOG_INIT_HEAP+pag) << 12); // It returns the initial logical address assigned to the region
+    }   
+  }
+  return NULL;
+}
+
+
+int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, que al final de la region tenga un pagina extra con present = 1 pero rw = 0
+  page_table_entry * process_PT = get_PT(current());
+  int pag = ((int)m) >> 12;
+  if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
+  if(is_page_used(process_PT, pag) == 0) return -1;
+  int i = 0;
+
+  while(is_page_used(process_PT, pag + i) && !check_is_page_spacing(process_PT, pag + i)) ++i;
+  
+  if(pag + i >= TOTAL_PAGES) return -1;
+  for(int j = 0; j < i; j++){
+    free_frame(get_frame(process_PT, pag + j));
+    del_ss_pag(process_PT, pag + j);
+  }
+  set_page_free(process_PT, pag + i);
+  del_ss_pag(process_PT, pag + i);
+  return 1;
 }
 
 

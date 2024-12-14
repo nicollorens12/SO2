@@ -50,6 +50,10 @@ int semSignal(struct sem_t* s);
 
 int semDestroy(struct sem_t* s);
 
+char* memRegGet(int num_pages);
+
+int memRegDel(char* m);
+
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
 
