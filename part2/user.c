@@ -31,7 +31,7 @@ void thread_sem_creator(int i){
     int t1 = threadCreateWithStack(print_thread_sem, 1, s); // Crear thread
     int t2 = threadCreateWithStack(print_thread_sem, 1, s); // Crear thread
     write(1, "I'm the new owner of sem after creating threads and about to exit\n", strlen(buff));
-    exit();
+    //exit();
 }
 
 int __attribute__ ((__section__(".text.main")))

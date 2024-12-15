@@ -177,13 +177,16 @@ ENTRY(threadCreateWithStack)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	pushl %esi;  // Save EBX, ESI and EDI if modified
 
 	movl $5, %eax
-	movl 0x8(%ebp), %ebx;	//function
-	movl 0xC(%ebp), %ecx;	//N
-	movl 0x10(%ebp), %edx;	//parameter
+	movl $wrapper_func, %ebx;	//wrapper_func
+	movl 0x8(%ebp), %ecx;	//function
+	movl 0xC(%ebp), %edx;	//N
+	movl 0x10(%ebp), %esi;	//parameter
 
 	call syscall_sysenter
+	popl %esi
 	popl %ebx
 	test %eax, %eax
 	js nok	// if (eax < 0) -> 

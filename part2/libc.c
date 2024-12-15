@@ -52,3 +52,10 @@ void perror()
 
   write(1, buffer, strlen(buffer));
 }
+
+
+void* wrapper_func(void (*function)(void* arg), void* parameter)
+{
+  function(*((unsigned int*)parameter));
+  exit();
+}

@@ -535,7 +535,7 @@ int get_sem_free_idx()
   return -1;
 }
 
-int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
+int sys_threadCreateWithStack(void (*wrapper_func)(void), void (*function)(void), int N, void *parameter ) {
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;
     
@@ -556,7 +556,9 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     unsigned int *stack_ptr = stack_base;
 
     stack_ptr -= 1;
-    *(stack_ptr) = *((unsigned int*)parameter); 
+    *(stack_ptr) = parameter;
+    stack_ptr -= 1;
+    *(stack_ptr) = function; 
     stack_ptr -= 1;
     *stack_ptr = 0;
 
@@ -566,7 +568,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread->task.state = ST_READY;
 
     new_thread->stack[KERNEL_STACK_SIZE-2] = (unsigned int)stack_ptr;
-    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)function;
+    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)wrapper_func;
 
     int register_ebp = (int) get_ebp();
     register_ebp = (register_ebp - (int)current()) + (int)(new_thread);

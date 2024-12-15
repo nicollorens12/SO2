@@ -54,6 +54,8 @@ char* memRegGet(int num_pages);
 
 int memRegDel(char* m);
 
+void* wrapper_func(void (*function)(void* arg), void* parameter);
+
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
 
