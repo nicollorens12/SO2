@@ -493,6 +493,7 @@ int sys_semSignal(struct sem_t* s){
   ++(s->count);
   if (s->count <= 0)
   {
+    if(list_empty(&s->blocked)) return -ESEMNOBLK;
     struct list_head *l = list_first( &(s->blocked) );
     list_del(l);
     struct task_struct *t = list_head_to_task_struct(l);
@@ -555,8 +556,10 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     void *stack_base = allocate_user_stack(N, process_PT); 
     unsigned int *stack_ptr = stack_base;
 
-    stack_ptr -= 1;
-    *(stack_ptr) = *((unsigned int*)parameter); 
+    if(parameter != NULL){
+      stack_ptr -= 1;
+      *(stack_ptr) = (unsigned int)parameter; 
+    }
     stack_ptr -= 1;
     *stack_ptr = 0;
 
