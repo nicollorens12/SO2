@@ -621,9 +621,10 @@ char* sys_memRegGet(int num_pages) {
     if(space){
       for(i = pag; i < pag + num_pages + 1; i++){
         new_ph_pag=alloc_frame();
-        if (new_ph_pag!=-1) /* One page allocated */
+        if (new_ph_pag!=-1) 
         {
           set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
+          if(i == pag) set_page_rw4system(process_PT, PAG_LOG_INIT_HEAP+i); // La primera pagina es la especial y marcamos con esta funcion que es de sistema
         }
         else /* No more free pages left. Deallocate everything */
         {
