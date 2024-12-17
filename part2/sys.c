@@ -308,12 +308,23 @@ void sys_exit()
   int i;
   reduce_dir_reference(current());
 
-  if(current()->num_stack_pages > 0){ //Si era un thread con stack dinamico, se libera
-    for(i = 0; i < current()->num_stack_pages; i++){
-        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
-        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+  if(!list_empty(&current()->threads)){
+    struct list_head *pos, *n;
+    list_for_each_safe(pos, n, &current()->threads){
+      struct task_struct *t = list_head_to_task_struct(pos);
+      list_del(&t->list);
+      if((&t->list_ordered)->next != 0){
+        list_del(&t->list_ordered);
+      }
+      if((&t->list_thread)->next != 0){
+        list_del(&t->list_thread);
+      }
+      t->PID = idle_task->PID;
+
+      list_add_tail(&t->list_thread, &idle_task->threads);
     }
   }
+
   if(check_dir_references(current()) == 0){ //Si era el ultimo thread con este directorio, se libera
     page_table_entry *process_PT = get_PT(current());
 
@@ -335,10 +346,14 @@ void sys_exit()
     }
     
   }
+  else{
+    for(i = 0; i < current()->num_stack_pages; i++){
+        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
+        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+    }
+  }
   /* Free task_struct */
-  list_add_tail(&(current()->list), &freequeue);
-    
-  current()->PID=-1;
+  // list_add_tail(&(current()->list), &freequeue);
 
   sched_next_rr();
 }
@@ -584,6 +599,8 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     *(DWord *)(new_thread->task.register_esp) = (DWord)&ret_from_fork;
     new_thread->task.register_esp -= sizeof(DWord);
     *(DWord *)(new_thread->task.register_esp) = temp_ebp;
+
+    INIT_LIST_HEAD(&new_thread->task.threads);
 
     list_add_tail(&new_thread->task.list_thread, &current()->threads);
     list_add_tail(&new_thread->task.list, &readyqueue);

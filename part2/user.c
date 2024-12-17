@@ -5,12 +5,13 @@
 void child_thread_funcs(void *param){
   
     int i = *(int *) param;
-    char buff[512] = "I'm the new thread of a thread with TID:\n";
+    char buff[512] = "I'm the new thread of a thread with TID:";
     write(1, buff, strlen(buff));
 
     char buff2[512];
     itoa(gettid(), buff2);
     write(1, buff2, strlen(buff2));
+    write(1, "\n", 1);
 
     exit();
 }
@@ -25,7 +26,7 @@ void create_thread(void *param){
       write(1, "Error creating thread\n", 22);
     }
   }
-
+  
   exit();
 }
 
@@ -37,10 +38,10 @@ int __attribute__ ((__section__(".text.main")))
 
   int param = 3; // Si es necesario pasar un entero como parámetro
   
-  // int t = threadCreateWithStack(create_thread, 10000, &param);
-  // if(t == -1){
-  //   write(1, "Error creating thread\n", 22);
-  // }
+  int t = threadCreateWithStack(create_thread, 10000, &param);
+  if(t == -1){
+     write(1, "Error creating thread\n", 22);
+  }
 
   int t = threadCreateWithStack(create_thread, 10, &param);
   if(t == -1){
