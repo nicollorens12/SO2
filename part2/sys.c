@@ -81,23 +81,19 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
   int new_ph_pag, pag, i;
   for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag) == 0){
-      if(N == 1){
-        space = 1;
-      }
-      else{
-        int pag_aux = pag;
-        while(pag_aux < N - 1){
-          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
-            pag_aux++;
-            space = 1;
-          }
-          else{
-            pag = pag_aux + 1;
-            break;
-          }
+      int pag_aux = pag;
+      while(pag_aux - pag < N - 1){ // -1 por que se acaba de mirar que la de arriba esta vacia
+        if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+          pag_aux++;
+        }
+        else{
+          pag = pag_aux + 1;
+          break;
         }
       }
-      
+      if(pag_aux - pag == N - 1){
+        space = 1;
+      }
     }
     if(space){
       for(i = pag; i < pag + N; i++){
@@ -109,10 +105,10 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
         else /* No more free pages left. Deallocate everything */
         {
           /* Deallocate allocated pages. Up to pag. */
-          for (i=0; i<pag; i++)
+          for (int j=pag; j<i; j++)
           {
-            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+i)); //Faltava
-            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+j)); //Faltava
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+j);
           }
           
           /* Return error */
@@ -631,6 +627,7 @@ char* sys_memRegGet(int num_pages) {
           /* Deallocate allocated pages. Up to pag. */
           for (int j=pag; j<i; j++)
           {
+            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+i)); //Faltava
             del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+j);
           }
           

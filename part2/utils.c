@@ -79,7 +79,7 @@ int access_ok(int type, const void * addr, unsigned long size)
 	  return 1;
     default:
       if ((addr_ini>=USER_FIRST_PAGE)&&
-  	(addr_fin<=(USER_FIRST_PAGE+NUM_PAG_CODE+NUM_PAG_DATA)))
+  	(addr_fin < TOTAL_PAGES)) // Ara tambe hem de poder accedir a les piles d'usuari
           return 1;
   }
   return 0;

@@ -11,18 +11,22 @@ void child_thread_funcs(void *param){
     char buff2[512];
     itoa(gettid(), buff2);
     write(1, buff2, strlen(buff2));
+
+    exit();
 }
 
 void create_thread(void *param){
   int i = *(int *) param;
   char buff[128] = "I'm the new thread father\n";
-  write(1, "buff", 4);
+  write(1, buff, strlen(buff));
 
   for(int j = 0; j < i; j++){
     if(threadCreateWithStack(child_thread_funcs, 1, &i) == -1){
       write(1, "Error creating thread\n", 22);
     }
   }
+
+  exit();
 }
 
 int __attribute__ ((__section__(".text.main")))
@@ -33,12 +37,12 @@ int __attribute__ ((__section__(".text.main")))
 
   int param = 3; // Si es necesario pasar un entero como parámetro
   
-  int t = threadCreateWithStack(create_thread, 10000, &param);
-  if(t == -1){
-    write(1, "Error creating thread\n", 22);
-  }
+  // int t = threadCreateWithStack(create_thread, 10000, &param);
+  // if(t == -1){
+  //   write(1, "Error creating thread\n", 22);
+  // }
 
-  t = threadCreateWithStack(create_thread, 10, &param);
+  int t = threadCreateWithStack(create_thread, 10, &param);
   if(t == -1){
     write(1, "Error creating thread\n", 22);
   }
