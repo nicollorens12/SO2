@@ -71,10 +71,30 @@ int __attribute__ ((__section__(".text.main")))
 
   int param = 10; // Si es necesario pasar un entero como parámetro
   
-  int t = threadCreateWithStack(thread_sem_creator, 4, &param);
+  int t = threadCreateWithStack(thread_sem_creator, 10000, &param);
   if(t == -1){
     write(1, "Error creating thread\n", 22);
   }
+
+  char *ptr = memRegGet(4);
+  if(ptr == 0){
+    write(1, "Error creating memory region\n", 29);
+  }
+  else{
+    write(1, "Memory region created\n", 22);
+  }
+
+  *ptr = 'a';
+  write(1, "\n", 1);
+  write(1, ptr, 1);
+  
+
+  ptr += 2000;
+  ptr = 'k';
+  write(1, "\n", 1);
+  write(1, ptr, 1);
+
+  memRegDel(ptr);
   
   while(1) { 
     

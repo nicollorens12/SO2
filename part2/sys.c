@@ -79,7 +79,7 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
   
 
   int new_ph_pag, pag, i;
-  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag) == 0){
       if(N == 1){
         space = 1;
@@ -508,7 +508,8 @@ int sys_semSignal(struct sem_t* s){
 
 int sys_semDestroy(struct sem_t* s)
 {
-  if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
+  if(s < &sem_list[0] || s> &sem_list[NUM_SEM])
+    return -ESEMINVADR;
   if (current()->TID != s->TID ) // Comprobar si el proceso en curso es el propietario del semaforo y por tanto, lo puede destruir
     return -ESEMNOPRP;
 
@@ -565,10 +566,8 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 
     unsigned int *stack_ptr = stack_base;
 
-    if(parameter != NULL){
-      stack_ptr -= 1;
-      *(stack_ptr) = (unsigned int)parameter; 
-    }
+    stack_ptr -= 1;
+    *(stack_ptr) = (unsigned int)parameter;
     stack_ptr -= 1;
     *stack_ptr = 0;
 
@@ -603,28 +602,24 @@ char* sys_memRegGet(int num_pages) {
   page_table_entry * process_PT = get_PT(current());
 
   int new_ph_pag, pag, i;
-  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT ,PAG_LOG_INIT_HEAP+pag) == 0){
-      if(num_pages == 1){
-        space = 1;
-      }
-      else{
-        int pag_aux = pag;
-        while(pag_aux < num_pages - 1){
-          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
-            pag_aux++;
-            space = 1;
-          }
-          else{
-            pag = pag_aux + 1;
-            break;
-          }
+      int pag_aux = pag;
+      while(pag_aux < num_pages){
+        if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+          pag_aux++;
+        }
+        else{
+          pag = pag_aux + 1;
+          break;
         }
       }
-      
+      if(pag_aux == num_pages){
+        space = 1;
+      }
     }
     if(space){
-      for(i = pag; i < pag + num_pages; i++){
+      for(i = pag; i < pag + num_pages + 1; i++){
         new_ph_pag=alloc_frame();
         if (new_ph_pag!=-1) /* One page allocated */
         {
@@ -633,16 +628,19 @@ char* sys_memRegGet(int num_pages) {
         else /* No more free pages left. Deallocate everything */
         {
           /* Deallocate allocated pages. Up to pag. */
-          for (i=0; i<pag; i++)
+          for (int j=pag; j<i; j++)
           {
-            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+j);
           }
           
           /* Return error */
           return -EAGAIN; 
         }
       }
-      set_page_used(process_PT, PAG_LOG_INIT_HEAP+ num_pages); // Añade una pagina extra como marcador, para evitar que se solapen con present = 1 pero rw = 0
+      char **ret = (char**)((PAG_LOG_INIT_HEAP+pag) << 12);
+      *ret = (char *)((PAG_LOG_INIT_HEAP+pag + 1) << 12); //Saving owner of the region (what we will return)
+      ret = (char**)((char*)ret + 1);
+      **ret = num_pages; // Saving the number of pages of the region (excluding the system reserved page)
       return (char*)((PAG_LOG_INIT_HEAP+pag) << 12); // It returns the initial logical address assigned to the region
     }   
   }
@@ -651,22 +649,20 @@ char* sys_memRegGet(int num_pages) {
 
 
 int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, que al final de la region tenga un pagina extra con present = 1 pero rw = 0
+  if ((unsigned long)m % PAGE_SIZE != 0) return -1; // Check if m is aligned with PAGE_SIZE
+  int pag = ((int)m) >> 12;
+  if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA*2 || pag >= TOTAL_PAGES) return -1;
+  if(*(char**)((pag - 1) << 12) != *m) return -1;
+
   page_table_entry * process_PT = get_PT(current());
   
-  int pag = ((int)m) >> 12;
-  if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
-  if(is_page_used(process_PT, pag) == 0) return -1;
-  int i = 0;
+  int num_pages = *(char*)((pag - 1) << 12 + 1);
 
-  while(is_page_used(process_PT, pag + i) && !check_is_page_spacing(process_PT, pag + i)) ++i;
-  
-  if(pag + i >= TOTAL_PAGES) return -1;
-  for(int j = 0; j < i; j++){
-    free_frame(get_frame(process_PT, pag + j));
-    del_ss_pag(process_PT, pag + j);
+  for(int i = pag - 1; i < pag + num_pages; i++){
+    free_frame(get_frame(process_PT, i));
+    del_ss_pag(process_PT, i);
   }
-  set_page_free(process_PT, pag + i);
-  del_ss_pag(process_PT, pag + i);
+
   return 1;
 }
 
