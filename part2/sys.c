@@ -74,7 +74,7 @@ int ret_from_fork()
 }
 
 __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
-  if(N > NUM_PAG_DATA) return -1;
+  if(N > NUM_PAG_DATA) return NULL;
   int space = 0;
   
 
@@ -111,11 +111,12 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
           /* Deallocate allocated pages. Up to pag. */
           for (i=0; i<pag; i++)
           {
+            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+i)); //Faltava
             del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
           }
           
           /* Return error */
-          return -EAGAIN; 
+          return NULL; 
         }
       }
       return (void*)((PAG_LOG_INIT_HEAP+pag + N) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
@@ -304,8 +305,8 @@ void sys_exit()
   // Si soc el propietari d'un semafor sys_semDestroy
   
   for(int i = 0; i < NUM_SEM; ++i){
-    sem_list[i].TID == current()->TID;
-    sys_semDestroy(&sem_list[i]);
+    if(sem_list[i].TID == current()->TID)
+      sys_semDestroy(&sem_list[i]);
   }
 
   int i;
@@ -479,10 +480,10 @@ int sys_semWait(struct sem_t* s)
   {
     list_add_tail(&current()->list, &s->blocked);
     sched_next_rr();
-
+    return 0; //Si se ha bloqueado
   }
 
-  return 1;
+  return 1; //Si no se ha bloqueado
 }
 
 int sys_semSignal(struct sem_t* s){
@@ -493,18 +494,21 @@ int sys_semSignal(struct sem_t* s){
   ++(s->count);
   if (s->count <= 0)
   {
+    if(list_empty(&s->blocked)) return -ESEMNOBLK;
     struct list_head *l = list_first( &(s->blocked) );
     list_del(l);
     struct task_struct *t = list_head_to_task_struct(l);
     t->wake_reason = SEM_SIG;
     list_add_tail(&t->list, &readyqueue);
+    return 1; //Si ha desbloqueado algo
   }
 
-  return 1;
+  return 0; //Si no ha desbloqueado nada
 }
 
 int sys_semDestroy(struct sem_t* s)
 {
+  if(s < &sem_list[0] || s> &sem_list[NUM_SEM]) return -ESEMINVADR;
   if (current()->TID != s->TID ) // Comprobar si el proceso en curso es el propietario del semaforo y por tanto, lo puede destruir
     return -ESEMNOPRP;
 
@@ -538,6 +542,8 @@ int get_sem_free_idx()
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;
+
+    if(function < (PAG_LOG_INIT_CODE << 12)|| function > ((PAG_LOG_INIT_CODE + NUM_PAG_CODE) << 12)) return -EINVFUNCADR;
     
     if (list_empty(&freequeue)) return -ENOMEM;
 
@@ -546,17 +552,23 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
     copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
 
-    
     if(add_dir_reference(new_thread) == -1) return -ENOMEM;
-
 
     page_table_entry *process_PT = get_PT(current());
 
     void *stack_base = allocate_user_stack(N, process_PT); 
+    if(stack_base == NULL){ 
+      reduce_dir_reference(new_thread);
+      list_add_tail(lhcurrent, &freequeue);
+      return -ENOMEM;
+    }
+
     unsigned int *stack_ptr = stack_base;
 
-    stack_ptr -= 1;
-    *(stack_ptr) = *((unsigned int*)parameter); 
+    if(parameter != NULL){
+      stack_ptr -= 1;
+      *(stack_ptr) = (unsigned int)parameter; 
+    }
     stack_ptr -= 1;
     *stack_ptr = 0;
 
@@ -640,6 +652,7 @@ char* sys_memRegGet(int num_pages) {
 
 int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, que al final de la region tenga un pagina extra con present = 1 pero rw = 0
   page_table_entry * process_PT = get_PT(current());
+  
   int pag = ((int)m) >> 12;
   if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
   if(is_page_used(process_PT, pag) == 0) return -1;
