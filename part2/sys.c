@@ -618,7 +618,7 @@ char* sys_memRegGet(int num_pages) {
   for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT ,PAG_LOG_INIT_HEAP+pag) == 0){
       int pag_aux = pag;
-      while(pag_aux < num_pages){
+      while(pag_aux - pag< num_pages){
         if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
           pag_aux++;
         }
@@ -627,7 +627,7 @@ char* sys_memRegGet(int num_pages) {
           break;
         }
       }
-      if(pag_aux == num_pages){
+      if(pag_aux - pag == num_pages){
         space = 1;
       }
     }
@@ -637,7 +637,9 @@ char* sys_memRegGet(int num_pages) {
         if (new_ph_pag!=-1) 
         {
           set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
-          if(i == pag) set_page_rw4system(process_PT, PAG_LOG_INIT_HEAP+i); // La primera pagina es la especial y marcamos con esta funcion que es de sistema
+          if(i == pag) {
+            set_page_rw4system(process_PT, PAG_LOG_INIT_HEAP+i); // La primera pagina es la especial y marcamos con esta funcion que es de sistema
+          }
         }
         else /* No more free pages left. Deallocate everything */
         {
@@ -652,11 +654,11 @@ char* sys_memRegGet(int num_pages) {
           return -EAGAIN; 
         }
       }
-      char **ret = (char**)((PAG_LOG_INIT_HEAP+pag) << 12);
-      *ret = (char *)((PAG_LOG_INIT_HEAP+pag + 1) << 12); //Saving owner of the region (what we will return)
-      ret = (char**)((char*)ret + 1);
-      **ret = num_pages; // Saving the number of pages of the region (excluding the system reserved page)
-      return (char*)((PAG_LOG_INIT_HEAP+pag) << 12); // It returns the initial logical address assigned to the region
+      char *ret = (char *)((PAG_LOG_INIT_HEAP + pag) << 12); // Dirección lógica inicial de la región
+      *(unsigned int *)ret = (unsigned int)((PAG_LOG_INIT_HEAP + pag + 1) << 12); // Guardar la dirección "propietaria" de la región
+      *(ret + sizeof(unsigned int)) = (char)num_pages; // Guardar el número de páginas de la región
+
+      return (char*)((PAG_LOG_INIT_HEAP+pag + 1) << 12); // It returns the initial logical address assigned to the region
     }   
   }
   return NULL;
