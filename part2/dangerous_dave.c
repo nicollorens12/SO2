@@ -36,7 +36,7 @@ char map[NUM_ROWS][NUM_COLUMNS] = {
     "##        ##########                                        ##########        ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                                                                            ##",
+    "##                                     *                                      ##",
     "################################################################################",
     "################################################################################"
 };
@@ -77,7 +77,7 @@ void update_thread_func(void *param)
     {
         update_player();
         
-        // Pequeña pausa para no saturar la CPU (podrías ajustar este tiempo)
+        // Pequeña pausa para no saturar la CPU (No se si hace falta!)
         int start_time = gettime();
         while (gettime() - start_time < 20); // Pausa de 20ms
     }
@@ -93,13 +93,13 @@ void update_player()
     semSignal(sem_key); // Desbloqueo
     
     // Movimiento del jugador
-    if (current_key == 'w' && map[player.p.y - 1][player.p.x] == ' ') {
+    if (current_key == 'w' && map[player.p.y - 1][player.p.x] != '#') {
         --player.p.y;
-    } else if (current_key == 's' && map[player.p.y + 1][player.p.x] == ' ') {
+    } else if (current_key == 's' && map[player.p.y + 1][player.p.x] != '#')  {
         ++player.p.y;
-    } else if (current_key == 'a' && map[player.p.y][player.p.x - 1] == ' ') {
+    } else if (current_key == 'a' && map[player.p.y][player.p.x - 1] != '#')  {
         --player.p.x;
-    } else if (current_key == 'd' && map[player.p.y][player.p.x + 1] == ' ') {
+    } else if (current_key == 'd' && map[player.p.y][player.p.x + 1] != '#')  {
         ++player.p.x;
     }
 
@@ -148,7 +148,7 @@ void render_thread_func(void *param)
         int start_frame_time = gettime();
         
         render_map();
-        //render_score();
+        render_score();
 
         // Mantener la velocidad de 30 FPS
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
