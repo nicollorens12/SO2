@@ -61,10 +61,16 @@ struct Enemy {
     int tickCounter;   // Contador de ticks para ralentizar el movimiento
 };
 
+struct GameStatus {
+    int score;
+    int lives;
+};
+
 struct Enemy enemies[2]; // Dos enemigos en las plataformas
 
 struct Player player;
-int score = 0;
+
+struct GameStatus gameStatus;
 
 char key = 0; // Variable de tecla compartida
 struct sem_t *sem_key; // Semáforo para proteger la variable 'key'
@@ -119,8 +125,10 @@ void update_enemies() {
         // Guardar el contenido original de la nueva celda
         enemy->p.x += enemy->dx;
         enemy->p.y += enemy->dy;
-        enemy->originalChar = map[enemy->p.y][enemy->p.x];
-
+        if(map[enemy->p.y][enemy->p.x] != '&')
+            enemy->originalChar = map[enemy->p.y][enemy->p.x];
+        else
+            enemy->originalChar = ' ';
         // Colocar el enemigo en la nueva posición
         map[enemy->p.y][enemy->p.x] = '+';
     }
@@ -128,14 +136,13 @@ void update_enemies() {
 
 
 
-void update_player()
-{
-    map[player.p.y][player.p.x] = ' '; // Limpiar la posición anterior del jugador
+void update_player() {
+    map[player.p.y][player.p.x] = ' '; 
 
-    semWait(sem_key); // Bloqueo para leer la tecla de forma segura
+    semWait(sem_key);
     char current_key = key;
     key = '\0'; // Limpiar la tecla
-    semSignal(sem_key); // Desbloqueo
+    semSignal(sem_key); 
     
     // Movimiento del jugador en eje X
     if (current_key == 'a' && map[player.p.y][player.p.x - 1] != '#')  {
@@ -177,15 +184,37 @@ void update_player()
         }
     }
 
-    // Recolección de premios
-    if (map[player.p.y][player.p.x] == '$') {
-        score += 10;
-    } else if (map[player.p.y][player.p.x] == '*') {
-        score += 5;
+    // Verificar colisión con enemigos
+    for (int i = 0; i < 2; i++) {
+        if (player.p.x == enemies[i].p.x && player.p.y == enemies[i].p.y) {
+            gameStatus.lives--; // Reducir vidas
+            if (gameStatus.lives > 0) {
+                map[player.p.y][player.p.x] = ' ';
+                player.p.x = 40;
+                player.p.y = 21;
+                player.velocityY = 0;
+                player.isJumping = 0;
+            } else {
+                // Manejar el fin del juego
+                clrscr(NULL);
+                char message[] = "Game Over!";
+                gotoXY(35, 12);
+                write(1, &message, sizeof(message));
+                while (1); // Detener el juego
+            }
+            break;
+        }
     }
 
-    map[player.p.y][player.p.x] = '&'; // Actualizar la posición del jugador
+    if (map[player.p.y][player.p.x] == '$') {
+        gameStatus.score += 10;
+    } else if (map[player.p.y][player.p.x] == '*') {
+        gameStatus.score += 5;
+    }
+
+    map[player.p.y][player.p.x] = '&'; 
 }
+
 
 
 void update_thread_func(void *param)
@@ -196,7 +225,7 @@ void update_thread_func(void *param)
         update_enemies();
         // Pequeña pausa para no saturar la CPU
         int start_time = gettime();
-        while (gettime() - start_time < 20); // Pausa de 20ms
+        while (gettime() - start_time < 20); // Pausa de 20ms (REVISAR)
     }
 }
 
@@ -240,22 +269,31 @@ void render_thread_func(void *param)
         int start_frame_time = gettime();
         
         render_map();
-        render_score();
+        render_game_status();
 
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
     }
 }
 
-void render_score()
+void render_game_status()
 {
-    changeColor(GREEN, BLACK);
+    //Quizas hacer un condicional para actualizar solo cuando ha cambiado score o lives
+    changeColor(GREEN, RED);
     char buff1[] = "score: ";
     gotoXY(0, 0);
     write(1, &buff1, sizeof(buff1));
     char buff2[3];
-    itodec(score, buff2);
+    itodec(gameStatus.score, buff2);
     gotoXY(7, 0);
     write(1, &buff2, sizeof(buff2));
+
+    char buff3[] = "lives: ";
+    gotoXY(0, 1);
+    write(1, &buff3, sizeof(buff3));
+    char buff4[3];
+    itodec(gameStatus.lives, buff4);
+    gotoXY(7, 1);
+    write(1, &buff4, sizeof(buff4));
 }
 
 void game_loop() 
@@ -265,6 +303,9 @@ void game_loop()
     player.velocityY = 0;
     player.isJumping = 0;
 
+    gameStatus.score = 0;
+    gameStatus.lives = 1;
+
     // Inicializar enemigos
     int enemy_index = 0;
     for (int i = 0; i < NUM_ROWS; i++) {
@@ -273,13 +314,12 @@ void game_loop()
                 enemies[enemy_index].p.x = j;
                 enemies[enemy_index].p.y = i;
                 enemies[enemy_index].dx = 1;  // Empieza moviéndose a la derecha
-                enemies[enemy_index].dy = 0;  // No se mueve verticalmente
+                enemies[enemy_index].dy = 0;  
                 enemies[enemy_index].originalChar = ' '; // Asume que la celda inicial es un espacio vacío
                 
-                // Inicializa el contador de ticks
-                enemies[enemy_index].tickCounter = 5; // Ajusta el valor para cambiar la velocidad
+                enemies[enemy_index].tickCounter = 5; // AJUSTAR EL VALOR PARA CAMBIAR LA VELOCIDAD DE LOS ENEMIGOS
 
-                map[i][j] = ' '; // Limpia el marcador '+' del mapa
+                map[i][j] = ' '; 
                 enemy_index++;
             }
         }
