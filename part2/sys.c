@@ -345,6 +345,7 @@ void sys_exit()
       }
     }
     
+
   }
   else{
     for(i = 0; i < current()->num_stack_pages; i++){
@@ -491,10 +492,10 @@ int sys_semWait(struct sem_t* s)
   {
     list_add_tail(&current()->list, &s->blocked);
     sched_next_rr();
-    return 0; //Si se ha bloqueado
+    return current()->wake_reason; //Si se ha bloqueado
   }
 
-  return 1; //Si no se ha bloqueado
+  return 0; //Si no se ha bloqueado
 }
 
 int sys_semSignal(struct sem_t* s){
@@ -610,7 +611,6 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 
 
 char* sys_memRegGet(int num_pages) {
-  if(num_pages > NUM_PAG_DATA) return -1;
   int space = 0;
   page_table_entry * process_PT = get_PT(current());
 
@@ -679,6 +679,8 @@ int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, q
     free_frame(get_frame(process_PT, i));
     del_ss_pag(process_PT, i);
   }
+
+  set_cr3(get_DIR(current()));
 
   return 1;
 }
