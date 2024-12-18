@@ -446,7 +446,7 @@ int sys_changeColor(int fg, int bg)
 int sys_clrscr(char* b)
 {
   // Gestio errors: La matriu es fora de l'espai d'adreces de l'usuari
-  if ( !access_ok(VERIFY_WRITE, b, 80 * 25 * 2) )
+  if ( b != NULL && !access_ok(VERIFY_WRITE, b, 80 * 25 * 2) )
     return -EFAULT;  /* Bad address */
   
   if (b != NULL)

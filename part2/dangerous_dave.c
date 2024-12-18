@@ -5,7 +5,6 @@
 // Constantes
 #define FPS 30  // Frames por segundo
 #define TICKS_PER_FRAME (1000 / FPS)
-#define GRAVITY 0.2f // Fuerza de la gravedad
 #define JUMP_VELOCITY -2.05f // Velocidad inicial del salto
 
 // {char, BG | FG}
@@ -14,7 +13,8 @@ const char EMPTY[2] = {' ', BLACK << 4 | BLACK};
 const char TROPHY[2] = {'$', BLACK << 4 | YELLOW};
 const char GEM[2] = {'*', BLACK << 4 | GREEN};
 const char PLAYER[2] = {'&', BLACK << 4 | LIGHT_BLUE};
-const char ENEMY[2] = {'+', MAGENTA << 4 | MAGENTA};
+const char ENEMY[2] = {'+', BLACK << 4 | MAGENTA};
+const char GRAVITY_BOOST[2] = {'^', BLACK << 4 | LIGHT_RED};
 
 // Mapa del juego
 char map[NUM_ROWS][NUM_COLUMNS] = {
@@ -27,21 +27,75 @@ char map[NUM_ROWS][NUM_COLUMNS] = {
     "##                                                                            ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                                      $                                     ##",
+    "##                                                                            ##",
     "##                                 ##########                                 ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                      *  +                           * +                    ##",
+    "##                         +                             +                    ##",
     "##                  ##########                    ##########                  ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##            *                                                  *            ##",
+    "##                                                                            ##",
     "##        ##########                                        ##########        ##",
     "##                                                                            ##",
     "##                                                                            ##",
     "##                                                                            ##",
     "################################################################################",
     "################################################################################"
+};
+
+char win_screen[NUM_ROWS][NUM_COLUMNS] = {
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                          ##    ##    ## ####  ##     ##                        ",
+    "                          ##   ###   ##   ##   ####   ##                        ",
+    "                          ##  ####  ##    ##   ## ##  ##                        ",
+    "                          ## ## ## ##     ##   ##  ## ##                        ",
+    "                          ####  ####      ##   ##   ####                        ",
+    "                          ##    ##       ####  ##     ##                        ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                "
+};
+
+char gameover_screen[NUM_ROWS][NUM_COLUMNS] = {
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                  #########  #########        ##     ## #########               ",
+    "                  ##         ##     ##      ####   #### ##                      ",
+    "                  ##  #####  ##     ##     ## ##  ## ## ##                      ",
+    "                  ##  #  ##  #########    ##  ## ##  ## ######                  ",
+    "                  ##     ##  ##     ##   ##   ####   ## ##                      ",
+    "                  #########  ##     ##  ##    ##     ## #########               ",
+    "                                                                                ",
+    "                    #########  ##     ##  #########  #########                  ",
+    "                    ##     ##  ##   ##    ##         ##     ##                  ",
+    "                    ##     ##  ##  ##     ##         ##     ##                  ",
+    "                    ##     ##  ## ##      ######     #########                  ",
+    "                    ##     ##  ####       ##         ##   ##                    ",
+    "                    #########  ##         #########  ##     ##                  ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                "
 };
 
 struct Point {
@@ -64,6 +118,7 @@ struct Enemy {
 struct GameStatus {
     int score;
     int lives;
+    int unlocked_platform;
 };
 
 struct Enemy enemies[2]; // Dos enemigos en las plataformas
@@ -74,6 +129,40 @@ struct GameStatus gameStatus;
 
 char key = 0; // Variable de tecla compartida
 struct sem_t *sem_key; // Semáforo para proteger la variable 'key'
+struct sem_t *sem_screen; // Semaforo para proteger escritura en pantalla
+float GRAVITY = 0.2f;
+
+void set_boosts(int reset){
+    if(reset){
+        map[17][15] = ' ';
+        map[17][65] = ' ';
+        map[9][40]  = '$';
+    }
+    map[13][25] = '^';
+    map[13][55] = '^';
+
+}
+
+void init_game(){
+    player.p.x = 40;
+    player.p.y = 21;
+    player.velocityY = 0;
+    player.isJumping = 0;
+
+    gameStatus.score = 0;
+    gameStatus.lives = 3;
+    gameStatus.unlocked_platform = 0;
+
+    GRAVITY = 0.2f;
+    set_boosts(1);
+}
+
+void reset_game(){
+    set_boosts(0);
+    GRAVITY = 0.2f;
+    gameStatus.unlocked_platform = 0;
+    gameStatus.score = 0;
+}
 
 void keyboard_thread_func(void *param) 
 {
@@ -108,16 +197,16 @@ void update_enemies() {
         map[enemy->p.y][enemy->p.x] = enemy->originalChar;
 
         // Detectar si el enemigo debe cambiar de dirección
-        if(enemy->dy == -1 && map[enemy->p.y][enemy->p.x + 1] == ' '){ // Estoy subiendo y puedo ir a la derecha
+        if(enemy->dy == -1 && map[enemy->p.y][enemy->p.x + 1] != '#' ){ // Estoy subiendo y puedo ir a la derecha
             enemy->dx = 1;
             enemy->dy = 0;
-        } else if(enemy->dx == - 1 && map[enemy->p.y - 1][enemy->p.x] == ' '){ // Estoy por debajo y puedo subir
-            enemy->dx = 0;  
+        } else if(enemy->dx == - 1 && map[enemy->p.y - 1][enemy->p.x] != '#'){ // Estoy por debajo y puedo subir
+            enemy->dx = 0;
             enemy->dy = -1;
-        } else if(enemy->dy == 1 && map[enemy->p.y][enemy->p.x - 1] == ' ') { // Estoy bajando y puedo ir a la izquierda
+        } else if(enemy->dy == 1 && map[enemy->p.y][enemy->p.x - 1] != '#' ) { // Estoy bajando y puedo ir a la izquierda
             enemy->dx = -1;
             enemy->dy = 0;
-        } else if (enemy->dx == 1 && map[enemy->p.y + 1][enemy->p.x] == ' ') { // Estoy por encima y puedo bajar
+        } else if (enemy->dx == 1 && map[enemy->p.y + 1][enemy->p.x] != '#' ) { // Estoy por encima y puedo bajar
             enemy->dx = 0;
             enemy->dy = 1;
         }
@@ -132,6 +221,29 @@ void update_enemies() {
         // Colocar el enemigo en la nueva posición
         map[enemy->p.y][enemy->p.x] = '+';
     }
+}
+
+void unlock_finish_slab(){
+    map[8][68] = '#';
+    map[8][69] = '#';
+    map[8][70] = '#';
+    map[8][71] = '#';
+    map[8][72] = '#';
+    map[8][73] = '#';
+    map[8][74] = '#';
+    map[8][75] = '#';
+    map[8][76] = '#';
+}
+void lock_finish_slab(){
+    map[8][68] = ' ';
+    map[8][69] = ' ';
+    map[8][70] = ' ';
+    map[8][71] = ' ';
+    map[8][72] = ' ';
+    map[8][73] = ' ';
+    map[8][74] = ' ';
+    map[8][75] = ' ';
+    map[8][76] = ' ';
 }
 
 
@@ -188,19 +300,13 @@ void update_player() {
     for (int i = 0; i < 2; i++) {
         if (player.p.x == enemies[i].p.x && player.p.y == enemies[i].p.y) {
             gameStatus.lives--; // Reducir vidas
+            reset_game();
             if (gameStatus.lives > 0) {
                 map[player.p.y][player.p.x] = ' ';
                 player.p.x = 40;
                 player.p.y = 21;
                 player.velocityY = 0;
                 player.isJumping = 0;
-            } else {
-                // Manejar el fin del juego
-                clrscr(NULL);
-                char message[] = "Game Over!";
-                gotoXY(35, 12);
-                write(1, &message, sizeof(message));
-                while (1); // Detener el juego
             }
             break;
         }
@@ -208,14 +314,25 @@ void update_player() {
 
     if (map[player.p.y][player.p.x] == '$') {
         gameStatus.score += 10;
-    } else if (map[player.p.y][player.p.x] == '*') {
+    } 
+    else if (map[player.p.y][player.p.x] == '*') {
         gameStatus.score += 5;
+    }
+    else if(map[player.p.y][player.p.x] == '^'){
+        GRAVITY = 0.1f;
     }
 
     map[player.p.y][player.p.x] = '&'; 
 }
 
-
+void update_map() 
+{
+    if(gameStatus.unlocked_platform == 1){
+        unlock_finish_slab();
+    } else {
+        lock_finish_slab();
+    }
+}
 
 void update_thread_func(void *param)
 {
@@ -223,6 +340,7 @@ void update_thread_func(void *param)
     {
         update_player();
         update_enemies();
+        update_map();
         // Pequeña pausa para no saturar la CPU
         int start_time = gettime();
         while (gettime() - start_time < 20); // Pausa de 20ms (REVISAR)
@@ -252,6 +370,9 @@ void render_map()
             } else if (map[i][j] == '+') {
                 render_map[i][j][0] = ENEMY[0];
                 render_map[i][j][1] = ENEMY[1];
+            } else if(map[i][j] == '^'){
+                render_map[i][j][0] = GRAVITY_BOOST[0];
+                render_map[i][j][1] = GRAVITY_BOOST[1];
             } else {
                 render_map[i][j][0] = EMPTY[0];
                 render_map[i][j][1] = EMPTY[1];
@@ -261,6 +382,66 @@ void render_map()
     clrscr(&render_map[0][0][0]);
 }
 
+void render_win_screen()
+{
+    char render_map[NUM_ROWS][NUM_COLUMNS][2];
+    for (int i = 0; i < NUM_ROWS; ++i) 
+    {
+        for (int j = 0; j < NUM_COLUMNS; ++j) 
+        {
+            render_map[i][j][0] = win_screen[i][j];
+            render_map[i][j][1] = BLACK << 4 | WHITE;
+        }
+    }
+
+    // Manejar el fin del juego
+    clrscr(&render_map[0][0][0]);
+}
+
+void render_gameover_screen()
+{
+    char render_map[NUM_ROWS][NUM_COLUMNS][2];
+    for (int i = 0; i < NUM_ROWS; ++i) 
+    {
+        for (int j = 0; j < NUM_COLUMNS; ++j) 
+        {
+            render_map[i][j][0] = gameover_screen[i][j];
+            render_map[i][j][1] = BLACK << 4 | WHITE;
+        }
+    }
+
+    // Manejar el fin del juego
+    clrscr(&render_map[0][0][0]);
+}
+
+void render_score_text()
+{
+    gotoXY(36, 14);
+    changeColor(YELLOW, BLACK);
+
+    char message[] = "Score: ";
+    write(1, &message, sizeof(message));
+
+    char buff[3] = "   ";
+    itodec(gameStatus.score, buff);
+    write(1, &buff, sizeof(buff));
+}
+
+int text_tearing = 0;
+void render_restart_text()
+{
+    if (text_tearing < 10)
+    {
+        char message[] = "Press Q to start new game";
+        gotoXY(28, 19);
+        changeColor(GREEN, BLACK);
+        write(1, &message, sizeof(message));
+    }
+
+    ++text_tearing;
+    if (text_tearing > 14)
+        text_tearing = 0;
+}
 
 void render_thread_func(void *param) 
 {
@@ -268,8 +449,21 @@ void render_thread_func(void *param)
     {
         int start_frame_time = gettime();
         
-        render_map();
-        render_game_status();
+        //if (gameStatus.lives > 0)
+        //{
+        //   render_map();
+        //   render_game_status();
+        //}
+        //else 
+        //{
+            render_gameover_screen();
+            render_restart_text();           
+        //}
+        {
+            //render_win_screen();
+            //render_score_text();
+            //render_restart_text();
+        }
 
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
     }
@@ -298,13 +492,7 @@ void render_game_status()
 
 void game_loop() 
 {
-    player.p.x = 40;
-    player.p.y = 21;
-    player.velocityY = 0;
-    player.isJumping = 0;
-
-    gameStatus.score = 0;
-    gameStatus.lives = 1;
+    init_game();
 
     // Inicializar enemigos
     int enemy_index = 0;
