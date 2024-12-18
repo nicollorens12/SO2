@@ -5,6 +5,8 @@
 // Constantes
 #define FPS 30  // Frames por segundo
 #define TICKS_PER_FRAME (1000 / FPS)
+#define GRAVITY 0.2f // Fuerza de la gravedad
+#define JUMP_VELOCITY -2.05f // Velocidad inicial del salto
 
 // {char, BG | FG}
 const char WALL[2] = {' ', RED << 4 | RED};
@@ -12,6 +14,7 @@ const char EMPTY[2] = {' ', BLACK << 4 | BLACK};
 const char TROPHY[2] = {'$', BLACK << 4 | YELLOW};
 const char GEM[2] = {'*', BLACK << 4 | GREEN};
 const char PLAYER[2] = {'&', BLACK << 4 | LIGHT_BLUE};
+const char ENEMY[2] = {'E', RED << 4 | RED}; // Caracter y color del enemigo
 
 // Mapa del juego
 char map[NUM_ROWS][NUM_COLUMNS] = {
@@ -28,7 +31,7 @@ char map[NUM_ROWS][NUM_COLUMNS] = {
     "##                                 ##########                                 ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                      *                               *                     ##",
+    "##                      *  E                           * E                    ##",
     "##                  ##########                    ##########                  ##",
     "##                                                                            ##",
     "##                                                                            ##",
@@ -36,7 +39,7 @@ char map[NUM_ROWS][NUM_COLUMNS] = {
     "##        ##########                                        ##########        ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                                     *                                      ##",
+    "##                                                                            ##",
     "################################################################################",
     "################################################################################"
 };
@@ -47,7 +50,18 @@ struct Point {
 
 struct Player {
     struct Point p;
+    float velocityY; // Velocidad vertical para el salto
+    int isJumping;   // Indicador de si el jugador está saltando
 };
+
+struct Enemy {
+    struct Point p;    // Posición (x, y) del enemigo
+    int dx, dy;        // Dirección de movimiento: dx = (-1 o 1), dy = (-1, 0 o 1)
+    char originalChar; // Contenido original de la celda del mapa
+};
+
+
+struct Enemy enemies[2]; // Dos enemigos en las plataformas
 
 struct Player player;
 int score = 0;
@@ -71,17 +85,29 @@ void keyboard_thread_func(void *param)
     }
 }
 
-void update_thread_func(void *param)
-{
-    while (1) 
-    {
-        update_player();
-        
-        // Pequeña pausa para no saturar la CPU (No se si hace falta!)
-        int start_time = gettime();
-        while (gettime() - start_time < 20); // Pausa de 20ms
+void update_enemies() {
+    for (int i = 0; i < 2; i++) {
+        struct Enemy *enemy = &enemies[i];
+
+        // Restaurar el contenido original de la celda que el enemigo deja
+        map[enemy->p.y][enemy->p.x] = enemy->originalChar;
+
+        // Detectar si el enemigo debe cambiar de dirección
+        if (map[enemy->p.y + 1][enemy->p.x + enemy->dx] == ' ') {
+            enemy->dx = -enemy->dx; // Cambiar la dirección
+        }
+
+        // Guardar el contenido original de la nueva celda
+        enemy->p.x += enemy->dx;
+        enemy->p.y += enemy->dy;
+        enemy->originalChar = map[enemy->p.y][enemy->p.x];
+
+        // Colocar el enemigo en la nueva posición
+        map[enemy->p.y][enemy->p.x] = 'E';
     }
 }
+
+
 
 void update_player()
 {
@@ -92,15 +118,44 @@ void update_player()
     key = '\0'; // Limpiar la tecla
     semSignal(sem_key); // Desbloqueo
     
-    // Movimiento del jugador
-    if (current_key == 'w' && map[player.p.y - 1][player.p.x] != '#') {
-        --player.p.y;
-    } else if (current_key == 's' && map[player.p.y + 1][player.p.x] != '#')  {
-        ++player.p.y;
-    } else if (current_key == 'a' && map[player.p.y][player.p.x - 1] != '#')  {
+    // Movimiento del jugador en eje X
+    if (current_key == 'a' && map[player.p.y][player.p.x - 1] != '#')  {
         --player.p.x;
-    } else if (current_key == 'd' && map[player.p.y][player.p.x + 1] != '#')  {
+    } 
+    else if (current_key == 'd' && map[player.p.y][player.p.x + 1] != '#')  {
         ++player.p.x;
+    } 
+    else if (current_key == 'w' && player.isJumping == 0) { 
+        // Salto
+        player.velocityY = JUMP_VELOCITY; 
+        player.isJumping = 1;
+    }
+
+    // Aplicar gravedad y movimiento vertical
+    player.velocityY += GRAVITY; // Aumentar la velocidad con la gravedad
+    int new_y = player.p.y + (int)player.velocityY;
+
+    if (new_y > player.p.y) { 
+        // Movimiento hacia abajo (caída)
+        for (int y = player.p.y; y <= new_y; ++y) {
+            if (map[y][player.p.x] == '#') {
+                player.velocityY = 0;
+                player.p.y = y - 1; // Posiciona al jugador sobre la plataforma
+                player.isJumping = 0; // El jugador aterriza
+                break;
+            }
+            player.p.y = y;
+        }
+    } 
+    else if (new_y < player.p.y) { 
+        // Movimiento hacia arriba (salto)
+        for (int y = player.p.y; y >= new_y; --y) {
+            if (map[y][player.p.x] == '#') {
+                player.velocityY = 0;
+                break;
+            }
+            player.p.y = y;
+        }
     }
 
     // Recolección de premios
@@ -112,6 +167,20 @@ void update_player()
 
     map[player.p.y][player.p.x] = '&'; // Actualizar la posición del jugador
 }
+
+
+void update_thread_func(void *param)
+{
+    while (1) 
+    {
+        update_player();
+        update_enemies();
+        // Pequeña pausa para no saturar la CPU
+        int start_time = gettime();
+        while (gettime() - start_time < 20); // Pausa de 20ms
+    }
+}
+
 
 void render_map() 
 {
@@ -132,6 +201,9 @@ void render_map()
             } else if (map[i][j] == '&') {
                 render_map[i][j][0] = PLAYER[0];
                 render_map[i][j][1] = PLAYER[1];
+            } else if (map[i][j] == 'E') {
+                render_map[i][j][0] = ENEMY[0];
+                render_map[i][j][1] = ENEMY[1];
             } else {
                 render_map[i][j][0] = EMPTY[0];
                 render_map[i][j][1] = EMPTY[1];
@@ -140,6 +212,7 @@ void render_map()
     }
     clrscr(&render_map[0][0][0]);
 }
+
 
 void render_thread_func(void *param) 
 {
@@ -150,12 +223,9 @@ void render_thread_func(void *param)
         render_map();
         render_score();
 
-        // Mantener la velocidad de 30 FPS
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
     }
 }
-
-
 
 void render_score()
 {
@@ -173,18 +243,32 @@ void game_loop()
 {
     player.p.x = 40;
     player.p.y = 21;
+    player.velocityY = 0;
+    player.isJumping = 0;
 
-    sem_key = semCreate(1); // Inicializamos semáforo de la variable 'key'
+    // Inicializar enemigos
+    int enemy_index = 0;
+    for (int i = 0; i < NUM_ROWS; i++) {
+        for (int j = 0; j < NUM_COLUMNS; j++) {
+            //enemies[enemy_index].originalChar = map[i][j];
+            if (map[i][j] == 'E' && enemy_index < 2) { 
+                enemies[enemy_index].p.x = j;
+                enemies[enemy_index].p.y = i;
+                enemies[enemy_index].dx = 1;  // Empieza moviéndose a la derecha
+                enemies[enemy_index].dy = 0;  // No se mueve verticalmente
+                map[i][j] = ' '; // Limpiar el marcador 'E' del mapa
+                enemy_index++;
+            }
+        }
+    }
 
-    // Creación de hilos
+    sem_key = semCreate(1); 
+
     threadCreateWithStack(keyboard_thread_func, 1, NULL);
     threadCreateWithStack(update_thread_func, 1, NULL);
     threadCreateWithStack(render_thread_func, 1, NULL);
 
-    while (1) 
-    {
-        // Bucle principal vacío (todos los hilos corren de forma independiente)
-        int start_frame_time = gettime();
-        while (gettime() - start_frame_time < TICKS_PER_FRAME);
-    }
+    while (1);
 }
+
+
