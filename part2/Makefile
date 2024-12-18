@@ -76,7 +76,8 @@ sched.o:sched.c $(INCLUDEDIR)/sched.h
 
 libc.o:libc.c $(INCLUDEDIR)/libc.h
 
-dangerous_dave.o:dangerous_dave.c $(INCLUDEDIR)/dangerous_dave.h
+dangerous_dave.o: dangerous_dave.c $(INCLUDEDIR)/dangerous_dave.h
+	$(CC) $(CFLAGS0) -c $< -o $@
 
 mm.o:mm.c $(INCLUDEDIR)/types.h $(INCLUDEDIR)/mm.h
 

@@ -17,7 +17,7 @@
 #define NUM_SEM 10
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
-enum wake_t {SEM_SIG, SEM_DES};
+enum wake_t {SEM_SIG = 1, SEM_DES = -1};
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
@@ -36,7 +36,7 @@ struct task_struct {
   int num_stack_pages;         /* Número de páginas del stack dinámico (N)*/
   struct list_head threads;     /* Lista de threads del proceso */
   struct list_head list_thread;  /* Entrada de la lista de threads del proceso*/
-  int wake_reason; 
+  int wake_reason;            /
 };
 
 union task_union {
