@@ -187,14 +187,14 @@ int sys_fork(void)
   }
 
   // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
-  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag< TOTAL_PAGES; pag++){
+  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA*2; pag< TOTAL_PAGES; pag++){
     if(is_page_used(parent_PT, pag)){
       int i = 1;
       while(is_page_used(parent_PT, pag + i)) ++i;
       void *space_base_pointer = allocate_user_stack(i, parent_PT);
 
       if(space_base_pointer == NULL) {
-        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag_aux<=pag; pag_aux++)
+        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA*2; pag_aux<=pag; pag_aux++)
         {
           if(is_page_used(process_PT, pag_aux)){
             free_frame(get_frame(process_PT, pag_aux));
@@ -611,6 +611,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 
 
 char* sys_memRegGet(int num_pages) {
+  if(num_pages > (TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL)) return -1;
   int space = 0;
   page_table_entry * process_PT = get_PT(current());
 
