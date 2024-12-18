@@ -74,30 +74,26 @@ int ret_from_fork()
 }
 
 __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entry *process_PT) { //Como en el fork, hay que hacer una busqueda lineal por el directorio para ver donde ponerlo
-  if(N > NUM_PAG_DATA) return -1;
+  if(N > NUM_PAG_DATA) return NULL;
   int space = 0;
   
 
   int new_ph_pag, pag, i;
-  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag) == 0){
-      if(N == 1){
-        space = 1;
-      }
-      else{
-        int pag_aux = pag;
-        while(pag_aux < N - 1){
-          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
-            pag_aux++;
-            space = 1;
-          }
-          else{
-            pag = pag_aux + 1;
-            break;
-          }
+      int pag_aux = pag;
+      while(pag_aux - pag < N - 1){ // -1 por que se acaba de mirar que la de arriba esta vacia
+        if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+          pag_aux++;
+        }
+        else{
+          pag = pag_aux + 1;
+          break;
         }
       }
-      
+      if(pag_aux - pag == N - 1){
+        space = 1;
+      }
     }
     if(space){
       for(i = pag; i < pag + N; i++){
@@ -109,13 +105,14 @@ __attribute__((optimize("O0"))) void* allocate_user_stack(int N, page_table_entr
         else /* No more free pages left. Deallocate everything */
         {
           /* Deallocate allocated pages. Up to pag. */
-          for (i=0; i<pag; i++)
+          for (int j=pag; j<i; j++)
           {
-            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+j)); //Faltava
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+j);
           }
           
           /* Return error */
-          return -EAGAIN; 
+          return NULL; 
         }
       }
       return (void*)((PAG_LOG_INIT_HEAP+pag + N) << 12); // NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA + 
@@ -304,19 +301,30 @@ void sys_exit()
   // Si soc el propietari d'un semafor sys_semDestroy
   
   for(int i = 0; i < NUM_SEM; ++i){
-    sem_list[i].TID == current()->TID;
-    sys_semDestroy(&sem_list[i]);
+    if(sem_list[i].TID == current()->TID)
+      sys_semDestroy(&sem_list[i]);
   }
 
   int i;
   reduce_dir_reference(current());
 
-  if(current()->num_stack_pages > 0){ //Si era un thread con stack dinamico, se libera
-    for(i = 0; i < current()->num_stack_pages; i++){
-        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
-        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+  if(!list_empty(&current()->threads)){
+    struct list_head *pos, *n;
+    list_for_each_safe(pos, n, &current()->threads){
+      struct task_struct *t = list_head_to_task_struct(pos);
+      list_del(&t->list);
+      if((&t->list_ordered)->next != 0){
+        list_del(&t->list_ordered);
+      }
+      if((&t->list_thread)->next != 0){
+        list_del(&t->list_thread);
+      }
+      t->PID = idle_task->PID;
+
+      list_add_tail(&t->list_thread, &idle_task->threads);
     }
   }
+
   if(check_dir_references(current()) == 0){ //Si era el ultimo thread con este directorio, se libera
     page_table_entry *process_PT = get_PT(current());
 
@@ -338,10 +346,14 @@ void sys_exit()
     }
     
   }
+  else{
+    for(i = 0; i < current()->num_stack_pages; i++){
+        free_frame(get_frame(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i));
+        del_ss_pag(get_PT(current()), ((int)current()->user_stack_base >> 12) - 1 + i);
+    }
+  }
   /* Free task_struct */
-  list_add_tail(&(current()->list), &freequeue);
-    
-  current()->PID=-1;
+  // list_add_tail(&(current()->list), &freequeue);
 
   sched_next_rr();
 }
@@ -479,10 +491,10 @@ int sys_semWait(struct sem_t* s)
   {
     list_add_tail(&current()->list, &s->blocked);
     sched_next_rr();
-
+    return 0; //Si se ha bloqueado
   }
 
-  return 1;
+  return 1; //Si no se ha bloqueado
 }
 
 int sys_semSignal(struct sem_t* s){
@@ -499,13 +511,16 @@ int sys_semSignal(struct sem_t* s){
     struct task_struct *t = list_head_to_task_struct(l);
     t->wake_reason = SEM_SIG;
     list_add_tail(&t->list, &readyqueue);
+    return 1; //Si ha desbloqueado algo
   }
 
-  return 1;
+  return 0; //Si no ha desbloqueado nada
 }
 
 int sys_semDestroy(struct sem_t* s)
 {
+  if(s < &sem_list[0] || s> &sem_list[NUM_SEM])
+    return -ESEMINVADR;
   if (current()->TID != s->TID ) // Comprobar si el proceso en curso es el propietario del semaforo y por tanto, lo puede destruir
     return -ESEMNOPRP;
 
@@ -539,6 +554,8 @@ int get_sem_free_idx()
 int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;
+
+    if(function < (PAG_LOG_INIT_CODE << 12)|| function > ((PAG_LOG_INIT_CODE + NUM_PAG_CODE) << 12)) return -EINVFUNCADR;
     
     if (list_empty(&freequeue)) return -ENOMEM;
 
@@ -547,19 +564,21 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread = (union task_union*)list_head_to_task_struct(lhcurrent);
     copy_data((union task_union*) current(), new_thread, sizeof(union task_union)); 
 
-    
     if(add_dir_reference(new_thread) == -1) return -ENOMEM;
-
 
     page_table_entry *process_PT = get_PT(current());
 
     void *stack_base = allocate_user_stack(N, process_PT); 
+    if(stack_base == NULL){ 
+      reduce_dir_reference(new_thread);
+      list_add_tail(lhcurrent, &freequeue);
+      return -ENOMEM;
+    }
+
     unsigned int *stack_ptr = stack_base;
 
-    if(parameter != NULL){
-      stack_ptr -= 1;
-      *(stack_ptr) = (unsigned int)parameter; 
-    }
+    stack_ptr -= 1;
+    *(stack_ptr) = (unsigned int)parameter;
     stack_ptr -= 1;
     *stack_ptr = 0;
 
@@ -581,6 +600,8 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread->task.register_esp -= sizeof(DWord);
     *(DWord *)(new_thread->task.register_esp) = temp_ebp;
 
+    INIT_LIST_HEAD(&new_thread->task.threads);
+
     list_add_tail(&new_thread->task.list_thread, &current()->threads);
     list_add_tail(&new_thread->task.list, &readyqueue);
 
@@ -594,47 +615,50 @@ char* sys_memRegGet(int num_pages) {
   page_table_entry * process_PT = get_PT(current());
 
   int new_ph_pag, pag, i;
-  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
+  for(int pag = 0; pag < TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL; pag++) {
     if(is_page_used(process_PT ,PAG_LOG_INIT_HEAP+pag) == 0){
-      if(num_pages == 1){
-        space = 1;
-      }
-      else{
-        int pag_aux = pag;
-        while(pag_aux < num_pages - 1){
-          if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
-            pag_aux++;
-            space = 1;
-          }
-          else{
-            pag = pag_aux + 1;
-            break;
-          }
+      int pag_aux = pag;
+      while(pag_aux - pag< num_pages){
+        if(is_page_used(process_PT, PAG_LOG_INIT_HEAP+pag_aux) == 0){
+          pag_aux++;
+        }
+        else{
+          pag = pag_aux + 1;
+          break;
         }
       }
-      
+      if(pag_aux - pag == num_pages){
+        space = 1;
+      }
     }
     if(space){
-      for(i = pag; i < pag + num_pages; i++){
+      for(i = pag; i < pag + num_pages + 1; i++){
         new_ph_pag=alloc_frame();
-        if (new_ph_pag!=-1) /* One page allocated */
+        if (new_ph_pag!=-1) 
         {
           set_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i, new_ph_pag);
+          if(i == pag) {
+            set_page_rw4system(process_PT, PAG_LOG_INIT_HEAP+i); // La primera pagina es la especial y marcamos con esta funcion que es de sistema
+          }
         }
         else /* No more free pages left. Deallocate everything */
         {
           /* Deallocate allocated pages. Up to pag. */
-          for (i=0; i<pag; i++)
+          for (int j=pag; j<i; j++)
           {
-            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+i);
+            free_frame(get_frame(process_PT, PAG_LOG_INIT_HEAP+i)); //Faltava
+            del_ss_pag(process_PT, PAG_LOG_INIT_HEAP+j);
           }
           
           /* Return error */
           return -EAGAIN; 
         }
       }
-      set_page_used(process_PT, PAG_LOG_INIT_HEAP+ num_pages); // Añade una pagina extra como marcador, para evitar que se solapen con present = 1 pero rw = 0
-      return (char*)((PAG_LOG_INIT_HEAP+pag) << 12); // It returns the initial logical address assigned to the region
+      char *ret = (char *)((PAG_LOG_INIT_HEAP + pag) << 12); // Dirección lógica inicial de la región
+      *(unsigned int *)ret = (unsigned int)((PAG_LOG_INIT_HEAP + pag + 1) << 12); // Guardar la dirección "propietaria" de la región
+      *(ret + sizeof(unsigned int)) = (char)num_pages; // Guardar el número de páginas de la región
+
+      return (char*)((PAG_LOG_INIT_HEAP+pag + 1) << 12); // It returns the initial logical address assigned to the region
     }   
   }
   return NULL;
@@ -642,21 +666,20 @@ char* sys_memRegGet(int num_pages) {
 
 
 int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, que al final de la region tenga un pagina extra con present = 1 pero rw = 0
-  page_table_entry * process_PT = get_PT(current());
+  if ((unsigned long)m % PAGE_SIZE != 0) return -1; // Check if m is aligned with PAGE_SIZE
   int pag = ((int)m) >> 12;
-  if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA || pag >= TOTAL_PAGES) return -1;
-  if(is_page_used(process_PT, pag) == 0) return -1;
-  int i = 0;
+  if(pag < NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA*2 || pag >= TOTAL_PAGES) return -1;
+  if(*(char**)((pag - 1) << 12) != *m) return -1;
 
-  while(is_page_used(process_PT, pag + i) && !check_is_page_spacing(process_PT, pag + i)) ++i;
+  page_table_entry * process_PT = get_PT(current());
   
-  if(pag + i >= TOTAL_PAGES) return -1;
-  for(int j = 0; j < i; j++){
-    free_frame(get_frame(process_PT, pag + j));
-    del_ss_pag(process_PT, pag + j);
+  int num_pages = *(char*)((pag - 1) << 12 + 1);
+
+  for(int i = pag - 1; i < pag + num_pages; i++){
+    free_frame(get_frame(process_PT, i));
+    del_ss_pag(process_PT, i);
   }
-  set_page_free(process_PT, pag + i);
-  del_ss_pag(process_PT, pag + i);
+
   return 1;
 }
 
