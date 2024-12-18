@@ -186,7 +186,7 @@ int sys_fork(void)
     del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
   }
 
-  // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
+  // Cal revisar el HEAP sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
   for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA*2; pag< TOTAL_PAGES; pag++){
     if(is_page_used(parent_PT, pag)){
       int i = 1;

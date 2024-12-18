@@ -3,9 +3,9 @@
 #include <libc.h>
 
 // Constantes
-#define FPS 30  // Frames por segundo
+#define FPS 30 
 #define TICKS_PER_FRAME (1000 / FPS)
-#define JUMP_VELOCITY -2.05f // Velocidad inicial del salto
+#define JUMP_VELOCITY -2.05f 
 
 // {char, BG | FG}
 const char WALL[2] = {' ', RED << 4 | RED};
@@ -132,8 +132,6 @@ struct GameStatus gameStatus;
 
 char key = 0; // Variable de tecla compartida
 int text_tearing = 0;
-struct sem_t *sem_key; // Semáforo para proteger la variable 'key'
-struct sem_t *sem_screen; // Semaforo para proteger escritura en pantalla
 float GRAVITY = 0.2f;
 
 void set_boosts(int reset){
@@ -171,6 +169,7 @@ void reset_game(){
 
 void keyboard_thread_func(void *param) 
 {
+    struct sem_t *sem_key = (struct sem_t *)param;
     while (1) 
     {
         char c;
@@ -263,7 +262,7 @@ void lock_finish_slab(){
 
 
 
-void update_player() {
+void update_player(struct sem_t *sem_key) {
     map[player.p.y][player.p.x] = ' '; 
 
     semWait(sem_key);
@@ -350,10 +349,11 @@ void update_map()
 
 void update_thread_func(void *param)
 {
+    struct sem_t *sem_key = (struct sem_t *)param;
     while (1) 
     {
         if(gameStatus.state == PLAYING){
-            update_player();
+            update_player(sem_key);
             update_enemies();
             update_map();
         }
@@ -540,10 +540,10 @@ void game_loop()
         }
     }
 
-    sem_key = semCreate(1); 
+    struct sem_t *sem_key = semCreate(1); 
 
-    threadCreateWithStack(keyboard_thread_func, 1, NULL);
-    threadCreateWithStack(update_thread_func, 1, NULL);
+    threadCreateWithStack(keyboard_thread_func, 1, sem_key);
+    threadCreateWithStack(update_thread_func, 1, sem_key);
     threadCreateWithStack(render_thread_func, 1, NULL);
 
     while (1);
