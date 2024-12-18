@@ -52,75 +52,65 @@ struct Player {
 struct Player player;
 int score = 0;
 
-char key;
-struct sem_t *sem_frame;
+char key = 0; // Variable de tecla compartida
+struct sem_t *sem_key; // Semáforo para proteger la variable 'key'
 
-void keyboard_thread_func(void* param) 
+void keyboard_thread_func(void *param) 
 {
-    struct sem_t *sem_input = (struct sem_t *)param;
-    semWait(sem_input); // Espera a que el ciclo principal lo desbloquee
     while (1) 
     {
         char c;
-        getKey(&c, 0);
-        
-        // Solo actualizamos la tecla si es válida
+        getKey(&c, 1); // Lee la tecla sin bloqueo
         if (c == 'w' || c == 's' || c == 'a' || c == 'd') 
         {
-            key = c;
+            semWait(sem_key);
+            key = c; // Actualizamos la tecla global de forma segura
+            c = '\0'; // Limpiar la tecla
+            semSignal(sem_key);
         }
-        
-        semSignal(sem_frame); // Desbloquea el ciclo principal
-        semWait(sem_input);
     }
 }
 
 void update_thread_func(void *param)
 {
-    struct sem_t *sem_update = (struct sem_t *)param;
-    semWait(sem_update); // Espera a que el ciclo principal lo desbloquee
-    while (1)
+    while (1) 
     {
         update_player();
-        semSignal(sem_frame); // Desbloquea el renderizador
-        semWait(sem_update); // Espera a que el render termine
+        
+        // Pequeña pausa para no saturar la CPU (podrías ajustar este tiempo)
+        int start_time = gettime();
+        while (gettime() - start_time < 20); // Pausa de 20ms
     }
 }
 
 void update_player()
 {
-    map[player.p.y][player.p.x] = ' ';
+    map[player.p.y][player.p.x] = ' '; // Limpiar la posición anterior del jugador
 
-    if (key == 'w' && map[player.p.y - 1][player.p.x] == ' ') {
+    semWait(sem_key); // Bloqueo para leer la tecla de forma segura
+    char current_key = key;
+    key = '\0'; // Limpiar la tecla
+    semSignal(sem_key); // Desbloqueo
+    
+    // Movimiento del jugador
+    if (current_key == 'w' && map[player.p.y - 1][player.p.x] == ' ') {
         --player.p.y;
-    } else if (key == 's' && map[player.p.y + 1][player.p.x] == ' ') {
+    } else if (current_key == 's' && map[player.p.y + 1][player.p.x] == ' ') {
         ++player.p.y;
-    } else if (key == 'a' && map[player.p.y][player.p.x - 1] == ' ') {
+    } else if (current_key == 'a' && map[player.p.y][player.p.x - 1] == ' ') {
         --player.p.x;
-    } else if (key == 'd' && map[player.p.y][player.p.x + 1] == ' ') {
+    } else if (current_key == 'd' && map[player.p.y][player.p.x + 1] == ' ') {
         ++player.p.x;
     }
 
+    // Recolección de premios
     if (map[player.p.y][player.p.x] == '$') {
         score += 10;
     } else if (map[player.p.y][player.p.x] == '*') {
         score += 5;
     }
 
-    map[player.p.y][player.p.x] = '&';
-}
-
-void render_thread_func(void *param) 
-{
-    struct sem_t *sem_render = (struct sem_t *)param;
-    semWait(sem_render); // Espera a que el ciclo principal lo desbloquee
-    while (1) 
-    {
-        render_map();
-        render_score();
-        semSignal(sem_frame); // Desbloquea el ciclo principal para continuar
-        semWait(sem_render); // Espera a que la actualización termine
-    }
+    map[player.p.y][player.p.x] = '&'; // Actualizar la posición del jugador
 }
 
 void render_map() 
@@ -148,8 +138,24 @@ void render_map()
             }
         }
     }
-    //clrscr(&render_map[0][0][0]);
+    clrscr(&render_map[0][0][0]);
 }
+
+void render_thread_func(void *param) 
+{
+    while (1) 
+    {
+        int start_frame_time = gettime();
+        
+        render_map();
+        //render_score();
+
+        // Mantener la velocidad de 30 FPS
+        while (gettime() - start_frame_time < TICKS_PER_FRAME);
+    }
+}
+
+
 
 void render_score()
 {
@@ -168,29 +174,17 @@ void game_loop()
     player.p.x = 40;
     player.p.y = 21;
 
-    struct sem_t *sem_input = semCreate(0);
-    struct sem_t *sem_update = semCreate(0);
-    struct sem_t *sem_render = semCreate(0);
-    sem_frame = semCreate(0);
+    sem_key = semCreate(1); // Inicializamos semáforo de la variable 'key'
 
+    // Creación de hilos
+    threadCreateWithStack(keyboard_thread_func, 1, NULL);
+    threadCreateWithStack(update_thread_func, 1, NULL);
+    threadCreateWithStack(render_thread_func, 1, NULL);
 
-
-    threadCreateWithStack(keyboard_thread_func, 1, sem_input);
-    threadCreateWithStack(update_thread_func, 1, sem_update);
-    threadCreateWithStack(render_thread_func, 1, sem_render);
-
-    int start_frame_time;
     while (1) 
     {
-        start_frame_time = gettime();
-        
-        semSignal(sem_input); // Desbloquea la entrada
-        semWait(sem_frame); // Espera a que el render termine
-        semSignal(sem_update); // Desbloquea la actualización
-        semWait(sem_frame); // Espera a que la actualización termine
-        semSignal(sem_render); // Desbloquea el renderizador
-        semWait(sem_frame); // Espera a que el render termine
-        
+        // Bucle principal vacío (todos los hilos corren de forma independiente)
+        int start_frame_time = gettime();
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
     }
 }

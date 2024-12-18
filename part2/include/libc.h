@@ -10,6 +10,8 @@
 
 #include <sem.h>
 
+#define NULL 0
+
 extern int errno;
 
 int write(int fd, char *buffer, int size);
