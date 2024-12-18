@@ -52,3 +52,34 @@ void perror()
 
   write(1, buffer, strlen(buffer));
 }
+
+// En libc.c
+void itodec(int a, char *b)
+{
+  int i, i1, digit;
+  char c;
+
+  if (a==0) { b[0]='0'; b[1]=0; return ;}
+
+  i=0;
+  while (a>0)
+  {
+    digit=(a%10);
+    a=a/10;
+
+    if (digit < 10)
+      b[i] = digit + '0';
+    else
+      b[i] = 'A' + digit - 10;
+
+    i++;
+  }
+
+  for (i1=0; i1<i/2; i1++)
+  {
+    c=b[i1];
+    b[i1]=b[i-i1-1];
+    b[i-i1-1]=c;
+  }
+  b[i]=0;
+}

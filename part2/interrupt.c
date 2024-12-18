@@ -102,7 +102,6 @@ void check_getKey_timeouts(){
  
 void clock_routine()
 {
-  zeos_show_clock();
   zeos_ticks ++;
   check_getKey_timeouts();
   schedule();
