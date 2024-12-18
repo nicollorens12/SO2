@@ -14,7 +14,7 @@ const char EMPTY[2] = {' ', BLACK << 4 | BLACK};
 const char TROPHY[2] = {'$', BLACK << 4 | YELLOW};
 const char GEM[2] = {'*', BLACK << 4 | GREEN};
 const char PLAYER[2] = {'&', BLACK << 4 | LIGHT_BLUE};
-const char ENEMY[2] = {'E', RED << 4 | RED}; // Caracter y color del enemigo
+const char ENEMY[2] = {'+', MAGENTA << 4 | MAGENTA};
 
 // Mapa del juego
 char map[NUM_ROWS][NUM_COLUMNS] = {
@@ -31,7 +31,7 @@ char map[NUM_ROWS][NUM_COLUMNS] = {
     "##                                 ##########                                 ##",
     "##                                                                            ##",
     "##                                                                            ##",
-    "##                      *  E                           * E                    ##",
+    "##                      *  +                           * +                    ##",
     "##                  ##########                    ##########                  ##",
     "##                                                                            ##",
     "##                                                                            ##",
@@ -58,8 +58,8 @@ struct Enemy {
     struct Point p;    // Posición (x, y) del enemigo
     int dx, dy;        // Dirección de movimiento: dx = (-1 o 1), dy = (-1, 0 o 1)
     char originalChar; // Contenido original de la celda del mapa
+    int tickCounter;   // Contador de ticks para ralentizar el movimiento
 };
-
 
 struct Enemy enemies[2]; // Dos enemigos en las plataformas
 
@@ -89,12 +89,31 @@ void update_enemies() {
     for (int i = 0; i < 2; i++) {
         struct Enemy *enemy = &enemies[i];
 
+        // Reducir el contador de ticks
+        if (enemy->tickCounter > 0) {
+            enemy->tickCounter--;
+            continue; // Salta el movimiento hasta que el contador llegue a 0
+        }
+
+        // Reiniciar el contador para el próximo movimiento
+        enemy->tickCounter = 5; // Ajusta este valor para cambiar la velocidad
+
         // Restaurar el contenido original de la celda que el enemigo deja
         map[enemy->p.y][enemy->p.x] = enemy->originalChar;
 
         // Detectar si el enemigo debe cambiar de dirección
-        if (map[enemy->p.y + 1][enemy->p.x + enemy->dx] == ' ') {
-            enemy->dx = -enemy->dx; // Cambiar la dirección
+        if(enemy->dy == -1 && map[enemy->p.y][enemy->p.x + 1] == ' '){ // Estoy subiendo y puedo ir a la derecha
+            enemy->dx = 1;
+            enemy->dy = 0;
+        } else if(enemy->dx == - 1 && map[enemy->p.y - 1][enemy->p.x] == ' '){ // Estoy por debajo y puedo subir
+            enemy->dx = 0;  
+            enemy->dy = -1;
+        } else if(enemy->dy == 1 && map[enemy->p.y][enemy->p.x - 1] == ' ') { // Estoy bajando y puedo ir a la izquierda
+            enemy->dx = -1;
+            enemy->dy = 0;
+        } else if (enemy->dx == 1 && map[enemy->p.y + 1][enemy->p.x] == ' ') { // Estoy por encima y puedo bajar
+            enemy->dx = 0;
+            enemy->dy = 1;
         }
 
         // Guardar el contenido original de la nueva celda
@@ -103,7 +122,7 @@ void update_enemies() {
         enemy->originalChar = map[enemy->p.y][enemy->p.x];
 
         // Colocar el enemigo en la nueva posición
-        map[enemy->p.y][enemy->p.x] = 'E';
+        map[enemy->p.y][enemy->p.x] = '+';
     }
 }
 
@@ -201,7 +220,7 @@ void render_map()
             } else if (map[i][j] == '&') {
                 render_map[i][j][0] = PLAYER[0];
                 render_map[i][j][1] = PLAYER[1];
-            } else if (map[i][j] == 'E') {
+            } else if (map[i][j] == '+') {
                 render_map[i][j][0] = ENEMY[0];
                 render_map[i][j][1] = ENEMY[1];
             } else {
@@ -250,13 +269,17 @@ void game_loop()
     int enemy_index = 0;
     for (int i = 0; i < NUM_ROWS; i++) {
         for (int j = 0; j < NUM_COLUMNS; j++) {
-            //enemies[enemy_index].originalChar = map[i][j];
-            if (map[i][j] == 'E' && enemy_index < 2) { 
+            if (map[i][j] == '+' && enemy_index < 2) { 
                 enemies[enemy_index].p.x = j;
                 enemies[enemy_index].p.y = i;
                 enemies[enemy_index].dx = 1;  // Empieza moviéndose a la derecha
                 enemies[enemy_index].dy = 0;  // No se mueve verticalmente
-                map[i][j] = ' '; // Limpiar el marcador 'E' del mapa
+                enemies[enemy_index].originalChar = ' '; // Asume que la celda inicial es un espacio vacío
+                
+                // Inicializa el contador de ticks
+                enemies[enemy_index].tickCounter = 5; // Ajusta el valor para cambiar la velocidad
+
+                map[i][j] = ' '; // Limpia el marcador '+' del mapa
                 enemy_index++;
             }
         }
@@ -270,5 +293,6 @@ void game_loop()
 
     while (1);
 }
+
 
 
