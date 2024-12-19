@@ -52,9 +52,14 @@ struct GameStatus {
 
 struct Enemy enemies[2]; // Dos enemigos en las plataformas
 
-struct Player player;
+Slab *player_slab;
 
-struct GameStatus gameStatus;
+// Slab para GameStatus
+Slab *gameStatus_slab;
+
+struct Player *player = NULL;
+struct GameStatus *gameStatus = NULL;
+
 
 char key = 0; // Variable de tecla compartida
 int text_tearing = 0;
@@ -76,14 +81,14 @@ void set_boosts(int reset){
 }
 
 void init_game(){
-    player.p.x = 40;
-    player.p.y = 20;
-    player.velocityY = 0;
-    player.isJumping = 0;
+    player->p.x = 40;
+    player->p.y = 20;
+    player->velocityY = 0;
+    player->isJumping = 0;
 
-    gameStatus.score = 0;
-    gameStatus.lives = 1;
-    gameStatus.unlocked_platform = 0;
+    gameStatus->score = 0;
+    gameStatus->lives = 1;
+    gameStatus->unlocked_platform = 0;
     lock_finish_slab();
 
     GRAVITY = 0.2f;
@@ -93,8 +98,8 @@ void init_game(){
 void reset_game(){
     set_boosts(0);
     GRAVITY = 0.2f;
-    gameStatus.unlocked_platform = 0;
-    gameStatus.score = 0;
+    gameStatus->unlocked_platform = 0;
+    gameStatus->score = 0;
 }
 
 void keyboard_thread_func(void *param) 
@@ -111,9 +116,9 @@ void keyboard_thread_func(void *param)
             c = '\0'; // Limpiar la tecla
             semSignal(sem_key);
         }
-        else if(gameStatus.state == GAMEOVER || gameStatus.state == WIN || gameStatus.state == INIT){
+        else if(gameStatus->state == GAMEOVER || gameStatus->state == WIN || gameStatus->state == INIT){
             if(c == 'r'){
-                gameStatus.state = PLAYING;
+                gameStatus->state = PLAYING;
                 init_game();
             }
         }
@@ -193,7 +198,7 @@ void lock_finish_slab(){
 
 
 void update_player(struct sem_t *sem_key) {
-    gameMap[player.p.y * NUM_COLUMNS + player.p.x] = ' '; 
+    gameMap[player->p.y * NUM_COLUMNS + player->p.x] = ' '; 
 
     semWait(sem_key);
     char current_key = key;
@@ -201,76 +206,76 @@ void update_player(struct sem_t *sem_key) {
     semSignal(sem_key); 
     
     // Movimiento del jugador en eje X
-    if (current_key == 'a' && gameMap[player.p.y * NUM_COLUMNS +  player.p.x - 1] != '#')  {
-        --player.p.x;
+    if (current_key == 'a' && gameMap[player->p.y * NUM_COLUMNS +  player->p.x - 1] != '#')  {
+        --player->p.x;
     } 
-    else if (current_key == 'd' && gameMap[player.p.y * NUM_COLUMNS + player.p.x + 1] != '#')  {
-        ++player.p.x;
+    else if (current_key == 'd' && gameMap[player->p.y * NUM_COLUMNS + player->p.x + 1] != '#')  {
+        ++player->p.x;
     } 
-    else if (current_key == 'w' && player.isJumping == 0) { 
+    else if (current_key == 'w' && player->isJumping == 0) { 
         // Salto
-        player.velocityY = JUMP_VELOCITY; 
-        player.isJumping = 1;
+        player->velocityY = JUMP_VELOCITY; 
+        player->isJumping = 1;
     }
 
     // Aplicar gravedad y movimiento vertical
-    player.velocityY += GRAVITY; // Aumentar la velocidad con la gravedad
-    int new_y = player.p.y + (int)player.velocityY;
+    player->velocityY += GRAVITY; // Aumentar la velocidad con la gravedad
+    int new_y = player->p.y + (int)player->velocityY;
 
-    if (new_y > player.p.y) { 
+    if (new_y > player->p.y) { 
         // Movimiento hacia abajo (caída)
-        for (int y = player.p.y; y <= new_y; ++y) {
-            if (gameMap[y*NUM_COLUMNS + player.p.x] == '#') {
-                player.velocityY = 0;
-                player.p.y = y - 1; // Posiciona al jugador sobre la plataforma
-                player.isJumping = 0; // El jugador aterriza
+        for (int y = player->p.y; y <= new_y; ++y) {
+            if (gameMap[y*NUM_COLUMNS + player->p.x] == '#') {
+                player->velocityY = 0;
+                player->p.y = y - 1; // Posiciona al jugador sobre la plataforma
+                player->isJumping = 0; // El jugador aterriza
                 break;
             }
-            player.p.y = y;
+            player->p.y = y;
         }
     } 
-    else if (new_y < player.p.y) { 
+    else if (new_y < player->p.y) { 
         // Movimiento hacia arriba (salto)
-        for (int y = player.p.y; y >= new_y; --y) {
-            if (gameMap[y*NUM_COLUMNS + player.p.x] == '#') {
-                player.velocityY = 0;
+        for (int y = player->p.y; y >= new_y; --y) {
+            if (gameMap[y*NUM_COLUMNS + player->p.x] == '#') {
+                player->velocityY = 0;
                 break;
             }
-            player.p.y = y;
+            player->p.y = y;
         }
     }
 
     // Verificar colisión con enemigos
     for (int i = 0; i < 2; i++) {
-        if (player.p.x == enemies[i].p.x && player.p.y == enemies[i].p.y) {
-            gameStatus.lives--; // Reducir vidas
-            if(gameStatus.lives > 0) reset_game();
-            else gameStatus.state = GAMEOVER;
+        if (player->p.x == enemies[i].p.x && player->p.y == enemies[i].p.y) {
+            gameStatus->lives--; // Reducir vidas
+            if(gameStatus->lives > 0) reset_game();
+            else gameStatus->state = GAMEOVER;
             break;
         }
     }
 
-    if (gameMap[player.p.y*NUM_COLUMNS + player.p.x] == '$') {
-        gameStatus.score += 10;
-        gameStatus.unlocked_platform = 1;
+    if (gameMap[player->p.y*NUM_COLUMNS + player->p.x] == '$') {
+        gameStatus->score += 10;
+        gameStatus->unlocked_platform = 1;
     } 
-    else if (gameMap[player.p.y*NUM_COLUMNS + player.p.x] == '*') {
-        gameStatus.score += 5;
+    else if (gameMap[player->p.y*NUM_COLUMNS + player->p.x] == '*') {
+        gameStatus->score += 5;
     }
-    else if(gameMap[player.p.y*NUM_COLUMNS + player.p.x] == '^'){
+    else if(gameMap[player->p.y*NUM_COLUMNS + player->p.x] == '^'){
         GRAVITY = 0.1f;
     }
-    else if(gameMap[player.p.y*NUM_COLUMNS + player.p.x] == '='){
-        gameStatus.state = WIN;
+    else if(gameMap[player->p.y*NUM_COLUMNS + player->p.x] == '='){
+        gameStatus->state = WIN;
         //init_game();
     }
 
-    gameMap[player.p.y * NUM_COLUMNS + player.p.x] = '&'; 
+    gameMap[player->p.y * NUM_COLUMNS + player->p.x] = '&'; 
 }
 
 void update_map() 
 {
-    if(gameStatus.unlocked_platform == 1){
+    if(gameStatus->unlocked_platform == 1){
         unlock_finish_slab();
     } else {
         lock_finish_slab();
@@ -282,7 +287,7 @@ void update_thread_func(void *param)
     struct sem_t *sem_key = (struct sem_t *)param;
     while (1) 
     {
-        if(gameStatus.state == PLAYING){
+        if(gameStatus->state == PLAYING){
             update_player(sem_key);
             update_enemies();
             update_map();
@@ -394,7 +399,7 @@ void render_score_text()
     write(1, &message, sizeof(message));
 
     char buff[3] = "   ";
-    itodec(gameStatus.score, buff);
+    itodec(gameStatus->score, buff);
     write(1, &buff, sizeof(buff));
 }
 
@@ -420,18 +425,18 @@ void render_thread_func(void *param)
     {
         int start_frame_time = gettime();
 
-        if(gameStatus.state == PLAYING)
+        if(gameStatus->state == PLAYING)
         {
            render_map();
            render_game_status();
         }
-        else if(gameStatus.state == WIN)
+        else if(gameStatus->state == WIN)
         {
             render_win_screen();
             render_score_text();
             render_restart_text();
         }
-        else if(gameStatus.state == GAMEOVER)
+        else if(gameStatus->state == GAMEOVER)
         {
             render_gameover_screen();
             render_restart_text();           
@@ -454,7 +459,7 @@ void render_game_status()
     gotoXY(0, 0);
     write(1, &buff1, sizeof(buff1));
     char buff2[3] = "   ";
-    itodec(gameStatus.score, buff2);
+    itodec(gameStatus->score, buff2);
     gotoXY(7, 0);
     write(1, &buff2, sizeof(buff2));
 
@@ -462,7 +467,7 @@ void render_game_status()
     gotoXY(0, 1);
     write(1, &buff3, sizeof(buff3));
     char buff4[3];
-    itodec(gameStatus.lives, buff4);
+    itodec(gameStatus->lives, buff4);
     gotoXY(7, 1);
     write(1, &buff4, sizeof(buff4));
 }
@@ -673,9 +678,37 @@ void generate_gameover_screen() {
     }
 }
 
+struct Player *alloc_player() {
+    return (struct Player *)slab_alloc(player_slab);
+}
+
+void free_player(struct Player *p) {
+    slab_free(player_slab, p);
+}
+
+struct GameStatus *alloc_game_status() {
+    return (struct GameStatus *)slab_alloc(gameStatus_slab);
+}
+
+void free_game_status(struct GameStatus *gs) {
+    slab_free(gameStatus_slab, gs);
+}
+
+
+void init_slabs() {
+    player_slab = slab_create(sizeof(struct Player));
+
+    gameStatus_slab = slab_create(sizeof(struct GameStatus));
+}
+
+
 void game_loop() 
 {
-    gameStatus.state = INIT;
+    init_slabs();
+    player = alloc_player();
+    gameStatus = alloc_game_status();
+
+    gameStatus->state = INIT;
 
     gameMap = memRegGet(4); // 4 paginas es algo mes dels 80x25x8 bytes que ocupa la matriu
     if(gameMap == NULL){
@@ -700,6 +733,11 @@ void game_loop()
         return;
     }
     generate_gameover_screen();
+
+    init_slabs();
+
+    // Asignar player y gameStatus desde los slabs
+    
     
     //*get_map_position(17, 15) = '*';
 
