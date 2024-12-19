@@ -104,6 +104,33 @@ char gameover_screen[NUM_ROWS][NUM_COLUMNS] = {
     "                                                                                "
 };
 
+char init_screen[NUM_ROWS][NUM_COLUMNS] = {
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                    #########  #########    #####     ########                  ",
+    "                         ###   ##         ##     ##  ##                         ",
+    "                        ##     ##         ##     ##   #######                   ",
+    "                       ##      ######     ##     ##         ##                  ",
+    "                     ###       ##         ##     ##         ##                  ",
+    "                    #########  #########    #####    ########                   ",
+    "                                                                                ",
+    "                    #######    #########  ##     ##  #########                  ",
+    "                    ##    ##   ##     ##  ##   ##    ##                         ",
+    "                    ##     ##  ##     ##  ##  ##     ##                         ",
+    "                    ##     ##  #########  ## ##      ######                     ",
+    "                    ##    ##   ##     ##  ####       ##                         ",
+    "                    #######    ##     ##  ##         #########                  ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                ",
+    "                                                                                "
+};
+
 struct Point {
     int x, y;
 };
@@ -185,8 +212,8 @@ void keyboard_thread_func(void *param)
             c = '\0'; // Limpiar la tecla
             semSignal(sem_key);
         }
-        else if(gameStatus.state == GAMEOVER || gameStatus.state == WIN){
-            if(c == 'q'){
+        else if(gameStatus.state == GAMEOVER || gameStatus.state == WIN || gameStatus.state == INIT){
+            if(c == 'r'){
                 gameStatus.state = PLAYING;
                 init_game();
             }
@@ -445,6 +472,22 @@ void render_gameover_screen()
     clrscr(&render_map[0][0][0]);
 }
 
+void render_init_screen()
+{
+    char render_map[NUM_ROWS][NUM_COLUMNS][2];
+    for (int i = 0; i < NUM_ROWS; ++i) 
+    {
+        for (int j = 0; j < NUM_COLUMNS; ++j) 
+        {
+            render_map[i][j][0] = init_screen[i][j];
+            render_map[i][j][1] = BLACK << 4 | WHITE;
+        }
+    }
+
+    // Manejar el fin del juego
+    clrscr(&render_map[0][0][0]);
+}
+
 void render_score_text()
 {
     gotoXY(36, 14);
@@ -463,7 +506,7 @@ void render_restart_text()
 {
     if (text_tearing < 10)
     {
-        char message[] = "Press Q to start new game";
+        char message[] = "Press R to start new game";
         gotoXY(28, 19);
         changeColor(GREEN, BLACK);
         write(1, &message, sizeof(message));
@@ -499,6 +542,8 @@ void render_thread_func(void *param)
         }
         else{
             // Pantalla de inicio
+            render_init_screen();
+            render_restart_text();
         }
 
         while (gettime() - start_frame_time < TICKS_PER_FRAME);
@@ -530,7 +575,7 @@ void render_game_status()
 
 void game_loop() 
 {
-    init_game();
+    gameStatus.state = INIT;
 
     mapAux = memRegGet(10);
     if(mapAux == NULL){
