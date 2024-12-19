@@ -23,6 +23,10 @@ enum game_state {PLAYING, WIN, GAMEOVER, INIT};
 // Mapa del juego
 char *gameMap;
 
+char *renderMapAux;
+
+char *mapAux;
+
 char map[NUM_ROWS][NUM_COLUMNS] = {
     "################################################################################",
     "################################################################################",
@@ -456,6 +460,10 @@ char get_map_position(char *matrix, int row, int col) {
     return matrix[row * NUM_COLUMNS + col];
 }
 
+short int get_render_map_position(char *matrix, int row, int col) {
+    return matrix[row * NUM_COLUMNS + col * 2];
+}
+
 void render_gameover_screen()
 {
     char render_map[NUM_ROWS][NUM_COLUMNS][2];
@@ -479,13 +487,16 @@ void render_init_screen()
     {
         for (int j = 0; j < NUM_COLUMNS; ++j) 
         {
-            render_map[i][j][0] = init_screen[i][j];
-            render_map[i][j][1] = BLACK << 4 | WHITE;
+             render_map[i][j][0] = init_screen[i][j];
+             render_map[i][j][1] = BLACK << 4 | WHITE;
+            //*get_render_map_position(renderMapAux, i, j) = RED << 12 | YELLOW | '#';
+            //renderMapAux[i * NUM_COLUMNS * 2 + j * 2] = RED << 12 | YELLOW << 8 | '#';
         }
     }
 
     // Manejar el fin del juego
     clrscr(&render_map[0][0][0]);
+    //clrscr(renderMapAux);
 }
 
 void render_score_text()
@@ -522,9 +533,9 @@ void render_thread_func(void *param)
     while (1) 
     {
         int start_frame_time = gettime();
-        if(1) render_gameover_screen();
+        //if(1) render_init_screen();
         
-        else if(gameStatus.state == PLAYING)
+        if(gameStatus.state == PLAYING)
         {
            render_map();
            render_game_status();
@@ -577,10 +588,15 @@ void game_loop()
 {
     gameStatus.state = INIT;
 
+
     mapAux = memRegGet(10);
     if(mapAux == NULL){
         return;
     }
+
+    renderMapAux = memRegGet(20); // 8
+    if (renderMapAux == NULL)
+        return;
 
     for (int i = 0; i < NUM_ROWS; i++) {
         for (int j = 0; j < NUM_COLUMNS; j++) {
