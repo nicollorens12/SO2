@@ -5,7 +5,9 @@
 // Constantes
 #define FPS 30 
 #define TICKS_PER_FRAME (1000 / FPS)
-#define JUMP_VELOCITY -2.05f 
+#define JUMP_VELOCITY -2.05f
+#define NUM_ROWS 25
+#define NUM_COLUMNS 80 
 
 // {char, BG | FG}
 const char WALL[2] = {' ', RED << 4 | RED};
@@ -19,6 +21,8 @@ const char FINISH_DOOR[2] = {'=', LIGHT_CYAN << 4 | YELLOW};
 enum game_state {PLAYING, WIN, GAMEOVER, INIT};
 
 // Mapa del juego
+char *gameMap;
+
 char map[NUM_ROWS][NUM_COLUMNS] = {
     "################################################################################",
     "################################################################################",
@@ -421,6 +425,10 @@ void render_win_screen()
     clrscr(&render_map[0][0][0]);
 }
 
+char get_map_position(char *matrix, int row, int col) {
+    return matrix[row * NUM_COLUMNS + col];
+}
+
 void render_gameover_screen()
 {
     char render_map[NUM_ROWS][NUM_COLUMNS][2];
@@ -428,7 +436,7 @@ void render_gameover_screen()
     {
         for (int j = 0; j < NUM_COLUMNS; ++j) 
         {
-            render_map[i][j][0] = gameover_screen[i][j];
+            render_map[i][j][0] = get_map_position(mapAux, i, j);
             render_map[i][j][1] = BLACK << 4 | WHITE;
         }
     }
@@ -471,8 +479,9 @@ void render_thread_func(void *param)
     while (1) 
     {
         int start_frame_time = gettime();
+        if(1) render_gameover_screen();
         
-        if(gameStatus.state == PLAYING)
+        else if(gameStatus.state == PLAYING)
         {
            render_map();
            render_game_status();
@@ -517,9 +526,24 @@ void render_game_status()
     write(1, &buff4, sizeof(buff4));
 }
 
+
+
 void game_loop() 
 {
     init_game();
+
+    mapAux = memRegGet(10);
+    if(mapAux == NULL){
+        return;
+    }
+
+    for (int i = 0; i < NUM_ROWS; i++) {
+        for (int j = 0; j < NUM_COLUMNS; j++) {
+            mapAux[i * NUM_COLUMNS + j] = '.'; // Rellenamos con puntos ('.')
+        }
+    }
+    //*get_map_position(17, 15) = '*';
+
 
     // Inicializar enemigos
     int enemy_index = 0;
