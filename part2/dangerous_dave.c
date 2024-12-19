@@ -393,7 +393,7 @@ void render_score_text()
     char message[] = "Score: ";
     write(1, &message, sizeof(message));
 
-    char buff[3] = "   ";
+    char buff[5] = "     ";
     itodec(gameStatus.score, buff);
     write(1, &buff, sizeof(buff));
 }

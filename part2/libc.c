@@ -86,6 +86,6 @@ void itodec(int a, char *b)
 
 void* wrapper_func(void (*function)(void* arg), void* parameter)
 {
-  (*function)(*((unsigned int*)parameter));
+  (*function)(parameter);
   exit();
 }
