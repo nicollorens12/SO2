@@ -63,4 +63,13 @@ void* wrapper_func(void (*function)(void* arg), void* parameter);
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
 
+typedef struct Slab {
+    void *start;
+    int block_size;
+    int num_blocks;
+    int used_blocks;
+    struct list_head free_list; // Cambiar de void * a struct list_head
+} Slab;
+
+
 #endif  /* __LIBC_H__ */

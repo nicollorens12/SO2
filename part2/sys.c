@@ -21,6 +21,8 @@
 
 #include <sem.h>
 
+#include <libc.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
@@ -31,6 +33,7 @@ extern struct list_head threads;
 
 extern int pending_key;
 extern struct sem_t sem_list[NUM_SEM];
+
 
 void * get_ebp();
 
@@ -658,6 +661,7 @@ char* sys_memRegGet(int num_pages) {
           return -EAGAIN; 
         }
       }
+      // Informacion guardada en la primera pagina de la region (la reservada para sistema)
       char *ret = (char *)((PAG_LOG_INIT_HEAP + pag) << 12); // Dirección lógica inicial de la región
       *(unsigned int *)ret = (unsigned int)((PAG_LOG_INIT_HEAP + pag + 1) << 12); // Guardar la dirección "propietaria" de la región
       *(ret + sizeof(unsigned int)) = (char)num_pages; // Guardar el número de páginas de la región
@@ -691,4 +695,62 @@ int sys_memRegDel(char* m){ // Busca una zona de tipo sys_memRegGet, es decir, q
 
 
 
+Slab *sys_slab_create(int block_size) {
+    if (block_size <= 0) return NULL;
 
+    int total_block_size = block_size + sizeof(struct list_head);
+    int num_blocks = PAGE_SIZE / total_block_size; // Bloques enteros que caben en la página
+    if (num_blocks <= 0) return NULL; 
+
+    char *start = sys_memRegGet(1);
+    if (!start) return NULL;
+
+    char *metadata_page = start - PAGE_SIZE;
+    Slab *slab = (Slab *)(metadata_page + 8); // Aprovechamos la zona de metadatos para guardar Slab
+    slab->start = start;
+    slab->block_size = block_size;
+    slab->num_blocks = num_blocks;
+    slab->used_blocks = 0;
+
+    INIT_LIST_HEAD(&slab->free_list);
+
+    // Crear la lista de bloques libres dentro de la página
+    char *block = start;
+    for (int i = 0; i < num_blocks; i++) {
+        struct list_head *entry = (struct list_head *)block;
+        list_add_tail(entry, &slab->free_list);
+        block += total_block_size;
+    }
+
+    return slab;
+}
+
+// Asigna un bloque del slab y lo saca de la lista de libres
+void *sys_slab_alloc(Slab *slab) {
+    if (!slab || list_empty(&slab->free_list)) return NULL;
+
+    struct list_head *block = list_first(&slab->free_list);
+    list_del(block);
+    slab->used_blocks++;
+
+    return (void *)block;
+}
+
+
+// Libera un bloque y lo devuelve a la lista de libres
+void sys_slab_free(Slab *slab, void *ptr) {
+    if (!slab || !ptr) return;
+
+    struct list_head *block_list_head = (struct list_head *)ptr;
+
+    list_add_tail(block_list_head, &slab->free_list);
+
+    slab->used_blocks--;
+}
+
+// Destruye el slab y libera toda la memoria
+void sys_slab_destroy(Slab *slab) {
+    if (!slab) return;
+
+    sys_memRegDel(slab->start);
+}
