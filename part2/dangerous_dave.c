@@ -420,7 +420,7 @@ void render_thread_func(void *param)
     {
         int start_frame_time = gettime();
 
-        else if(gameStatus.state == PLAYING)
+        if(gameStatus.state == PLAYING)
         {
            render_map();
            render_game_status();

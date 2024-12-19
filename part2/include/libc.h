@@ -36,7 +36,7 @@ int yield();
 
 int get_stats(int pid, struct stats *st);
 
-int sys_getKey(char* b, int timeout);
+int getKey(char* b, int timeout);
 
 int gotoXY(int x, int y);
 
@@ -57,6 +57,8 @@ int semDestroy(struct sem_t* s);
 char* memRegGet(int num_pages);
 
 int memRegDel(char* m);
+
+void* wrapper_func(void (*function)(void* arg), void* parameter);
 
 void SAVE_REGS(void);
 void RESTORE_REGS(void);
