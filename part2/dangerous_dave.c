@@ -398,7 +398,7 @@ void render_score_text()
     char message[] = "Score: ";
     write(1, &message, sizeof(message));
 
-    char buff[5] = "     ";
+    char buff[3] = "   ";
     itodec(gameStatus->score, buff);
     write(1, &buff, sizeof(buff));
 }
@@ -453,12 +453,12 @@ void render_thread_func(void *param)
 
 void render_game_status()
 {
-    //Quizas hacer un condicional para actualizar solo cuando ha cambiado score o lives
+    // Quizas hacer un condicional para actualizar solo cuando ha cambiado score o lives
     changeColor(GREEN, RED);
     char buff1[] = "score: ";
     gotoXY(0, 0);
     write(1, &buff1, sizeof(buff1));
-    char buff2[3];
+    char buff2[3] = "   ";
     itodec(gameStatus->score, buff2);
     gotoXY(7, 0);
     write(1, &buff2, sizeof(buff2));
