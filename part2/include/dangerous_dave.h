@@ -5,7 +5,6 @@
 #ifndef __DANGEROUS_DAVE_H__
 #define __DANGEROUS_DAVE_H__
 
-
 void game_loop();
 
 void update();

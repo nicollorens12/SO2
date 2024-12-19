@@ -186,15 +186,15 @@ int sys_fork(void)
     del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
   }
 
-  // Cal revisar l'espai logic sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
-  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag< TOTAL_PAGES; pag++){
+  // Cal revisar el HEAP sencer mirar si hi ha una pagina ocupada, i si esta ocupada copiarla
+  for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA*2; pag< TOTAL_PAGES; pag++){
     if(is_page_used(parent_PT, pag)){
       int i = 1;
       while(is_page_used(parent_PT, pag + i)) ++i;
       void *space_base_pointer = allocate_user_stack(i, parent_PT);
 
       if(space_base_pointer == NULL) {
-        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag_aux<=pag; pag_aux++)
+        for (int pag_aux=NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA*2; pag_aux<=pag; pag_aux++)
         {
           if(is_page_used(process_PT, pag_aux)){
             free_frame(get_frame(process_PT, pag_aux));
@@ -552,7 +552,8 @@ int get_sem_free_idx()
   return -1;
 }
 
-int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
+int sys_threadCreateWithStack(void (*wrapper_func)(void), void (*function)(void), int N, void *parameter )
+{
     struct list_head *lhcurrent = NULL;
     union task_union *new_thread;
 
@@ -581,6 +582,8 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     stack_ptr -= 1;
     *(stack_ptr) = (unsigned int)parameter;
     stack_ptr -= 1;
+    *(stack_ptr) = function; 
+    stack_ptr -= 1;
     *stack_ptr = 0;
 
     new_thread->task.user_stack_base = stack_base;
@@ -589,7 +592,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
     new_thread->task.state = ST_READY;
 
     new_thread->stack[KERNEL_STACK_SIZE-2] = (unsigned int)stack_ptr;
-    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)function;
+    new_thread->stack[KERNEL_STACK_SIZE-5] = (unsigned int)wrapper_func;
 
     int register_ebp = (int) get_ebp();
     register_ebp = (register_ebp - (int)current()) + (int)(new_thread);
@@ -611,6 +614,7 @@ int sys_threadCreateWithStack(void (*function)(void), int N, void *parameter ) {
 
 
 char* sys_memRegGet(int num_pages) {
+  if(num_pages > (TOTAL_PAGES-NUM_PAG_DATA*2-NUM_PAG_CODE-NUM_PAG_KERNEL)) return -1;
   int space = 0;
   page_table_entry * process_PT = get_PT(current());
 
