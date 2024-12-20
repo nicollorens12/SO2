@@ -92,35 +92,34 @@ void* wrapper_func(void (*function)(void* arg), void* parameter)
 
 
 
-Slab slab_create(int n_pages, int block_size) {
-    Slab slab;
-    slab.num_blocks = 0;
+int slab_create(Slab* slab, int n_pages, int block_size) {
+    slab->num_blocks = 0;
 
-    if (block_size <= 0) return slab;
+    if (block_size <= 0) return -1;
 
     int total_block_size = block_size + sizeof(struct list_head);
     int num_blocks = (0x1000)*n_pages / total_block_size; // Bloques enteros que caben en la página
-    if (num_blocks <= 0) return slab; 
+    if (num_blocks <= 0) return -1; 
 
     char *start = memRegGet(n_pages);
-    if (!start) return slab;
+    if (!start) return -1;
 
-    slab.start = start;
-    slab.block_size = block_size;
-    slab.num_blocks = num_blocks;
-    slab.used_blocks = 0;
+    slab->start = start;
+    slab->block_size = block_size;
+    slab->num_blocks = num_blocks;
+    slab->used_blocks = 0;
 
-    INIT_LIST_HEAD(&slab.free_list);
+    INIT_LIST_HEAD(&slab->free_list);
 
     // Crear la lista de bloques libres dentro de la página
     char *block = start;
     for (int i = 0; i < num_blocks; i++) {
         struct list_head *entry = (struct list_head *)block;
-        list_add_tail(entry, &slab.free_list);
+        list_add_tail(entry, &slab->free_list);
         block += total_block_size;
     }
 
-    return slab;
+    return 1;
 }
 
 // Asigna un bloque del slab y lo saca de la lista de libres

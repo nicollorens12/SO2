@@ -74,7 +74,7 @@ typedef struct Slab {
 } Slab;
 
 
-Slab slab_create(int n_pages, int block_size);
+int slab_create(Slab* slab, int n_pages, int block_size);
 
 void *slab_alloc(Slab *slab);
 

@@ -698,9 +698,9 @@ void free_game_status(struct GameStatus *gs) {
 
 void init_slabs() {
     if (sizeof(struct Player) > sizeof(struct GameStatus))
-        info_slab = slab_create(1, sizeof(struct Player));
+        slab_create(&info_slab, 1, sizeof(struct Player));
     else
-        info_slab = slab_create(1, sizeof(struct GameStatus));
+        slab_create(&info_slab, 1, sizeof(struct GameStatus));
 
     // player_slab = slab_create(sizeof(struct Player));
 
