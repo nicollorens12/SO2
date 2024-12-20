@@ -278,63 +278,6 @@ ENTRY(memRegDel)
 	popl %ebp
 	ret
 
-/* Slab *slab_create(int block_size) */
-ENTRY(slab_create)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $16, %eax
-	movl 0x8(%ebp), %ebx;	//block_size
-	call syscall_sysenter
-	popl %ebx
-	test %eax, %eax
-	js nok	// if (eax < 0) -->
-	popl %ebp
-	ret
-
-/* void *slab_alloc(Slab *slab)  */
-ENTRY(slab_alloc)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $17, %eax
-	movl 0x8(%ebp), %ebx;	//Slab *slab
-	call syscall_sysenter
-	popl %ebx
-	test %eax, %eax
-	js nok	// if (eax < 0) -->
-	popl %ebp
-	ret
-
-/*void slab_free(Slab *slab, void *ptr)*/
-ENTRY(slab_free)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $18, %eax
-	movl 0x8(%ebp), %ebx;	//int fg
-	movl 0xC(%ebp), %ecx;	//int bg
-	call syscall_sysenter
-	popl %ebx
-	test %eax, %eax
-	js nok	// if (eax < 0) -->
-	popl %ebp
-	ret
-
-/* void slab_destroy(Slab *slab)  */
-ENTRY(slab_destroy)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $19, %eax
-	movl 0x8(%ebp), %ebx;	//Slab *slab
-	call syscall_sysenter
-	popl %ebx
-	test %eax, %eax
-	js nok	// if (eax < 0) -->
-	popl %ebp
-	ret
-
 ENTRY(SAVE_REGS)
       pushl %eax
       movl %eax, REGS    //SAVE EAX

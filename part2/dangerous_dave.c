@@ -52,10 +52,7 @@ struct GameStatus {
 
 struct Enemy enemies[2]; // Dos enemigos en las plataformas
 
-Slab *player_slab;
-
-// Slab para GameStatus
-Slab *gameStatus_slab;
+Slab info_slab;
 
 struct Player *player = NULL;
 struct GameStatus *gameStatus = NULL;
@@ -679,26 +676,35 @@ void generate_gameover_screen() {
 }
 
 struct Player *alloc_player() {
-    return (struct Player *)slab_alloc(player_slab);
+    //return (struct Player *)slab_alloc(player_slab);
+    return (struct Player *)slab_alloc(&info_slab);
 }
 
 void free_player(struct Player *p) {
-    slab_free(player_slab, p);
+    //slab_free(player_slab, p);
+    slab_free(&info_slab, p);
 }
 
 struct GameStatus *alloc_game_status() {
-    return (struct GameStatus *)slab_alloc(gameStatus_slab);
+    //return (struct GameStatus *)slab_alloc(gameStatus_slab);
+    return (struct GameStatus *)slab_alloc(&info_slab);
 }
 
 void free_game_status(struct GameStatus *gs) {
-    slab_free(gameStatus_slab, gs);
+    //slab_free(gameStatus_slab, gs);
+    slab_free(&info_slab, gs);
 }
 
 
 void init_slabs() {
-    player_slab = slab_create(sizeof(struct Player));
+    if (sizeof(struct Player) > sizeof(struct GameStatus))
+        info_slab = slab_create(1, sizeof(struct Player));
+    else
+        info_slab = slab_create(1, sizeof(struct GameStatus));
 
-    gameStatus_slab = slab_create(sizeof(struct GameStatus));
+    // player_slab = slab_create(sizeof(struct Player));
+
+    // gameStatus_slab = slab_create(sizeof(struct GameStatus));
 }
 
 

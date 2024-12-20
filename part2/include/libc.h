@@ -10,6 +10,8 @@
 
 #include <sem.h>
 
+#include <list.h>
+
 #define NULL 0
 
 extern int errno;
@@ -71,5 +73,13 @@ typedef struct Slab {
     struct list_head free_list; // Cambiar de void * a struct list_head
 } Slab;
 
+
+Slab slab_create(int n_pages, int block_size);
+
+void *slab_alloc(Slab *slab);
+
+void slab_free(Slab *slab, void *ptr);
+
+void slab_destroy(Slab *slab);
 
 #endif  /* __LIBC_H__ */
