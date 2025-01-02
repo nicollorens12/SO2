@@ -16,4 +16,4 @@ This repository contains two main things, the laboratory of the course (divided 
 
 We are very proud that our final project was graded with a `11/10` (we got an extra point for implementing a optional feature). 
 
-My small paper of [Malware and Emerging Architectures: The Case of RISC-V] () was graded with a `10`. This was originaly written in Catalan, but I will be translating it soon.
+My small paper of [Malware and Emerging Architectures: The Case of RISC-V](https://github.com/nicollorens12/SO2/blob/main/Malware%20on%20Emerging%20Architectures.pdf) was graded with a `10`. This was originaly written in Catalan, but I will be translating it soon.
